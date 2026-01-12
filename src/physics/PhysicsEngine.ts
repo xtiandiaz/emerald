@@ -78,7 +78,7 @@ export class PhysicsEngine {
     this.clearImpulses()
 
     for (let i = 0; i < pointCount; i++) {
-      this.resetRotationRadii(A, B, collision.points[i]!, i)
+      this.resetRotationRadii(A, B, collision.points[i]!.point, i)
 
       this.resetRelativeVelocity(A, B, i)
       const vrDotN = this.vrs[i]!.dot(N)
@@ -99,7 +99,7 @@ export class PhysicsEngine {
     }
 
     for (let i = 0; i < pointCount; i++) {
-      this.resetRotationRadii(A, B, collision.points[i]!, i)
+      this.resetRotationRadii(A, B, collision.points[i]!.point, i)
 
       this.resetRelativeVelocity(A, B, i)
       const vr = this.vrs[i]!

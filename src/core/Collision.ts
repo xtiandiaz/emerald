@@ -6,9 +6,11 @@ import {
   type Range,
   type Vector,
   type VectorData,
+  average,
 } from '../core'
 import { Body } from '../components'
 import { Geometry } from './Geometry'
+import { ExtraMath } from '../extras'
 
 export namespace Collision {
   export type LayerMap = Map<number, number>
@@ -34,8 +36,13 @@ export namespace Collision {
     validCount: 1 | 2
   }
 
+  export interface ContactPoint {
+    point: Point
+    depth: number
+  }
+
   export interface Contact extends ProjectionOverlap {
-    points?: Point[]
+    points?: ContactPoint[]
   }
 
   export interface Instance extends Contact {
@@ -55,6 +62,20 @@ export namespace Collision {
     return !map || (((map.get(layerA) ?? 0) & layerB) | ((map.get(layerB) ?? 0) & layerA)) != 0
   }
 
+  export function getVertexIndexWithMaxProjection(vertices: Point[], axis: VectorData): number {
+    let maxProjection = -Infinity
+    let index = -1
+
+    for (let i = 0; i < vertices.length; i++) {
+      const proj = vertices[i]!.dot(axis)
+      if (proj > maxProjection) {
+        maxProjection = proj
+        index = i
+      }
+    }
+    return index
+  }
+
   export function getClosestVertexIndexToPoint(vertices: Point[], p: PointData): number {
     let index = -1
     let distSqrd = Infinity
@@ -68,12 +89,12 @@ export namespace Collision {
     return index
   }
 
-  export function getProjectionRange(vertices: PointData[], axis: VectorData): Range {
+  export function getProjectionRange(vertices: Point[], axis: VectorData): Range {
     const range: Range = { min: Infinity, max: -Infinity }
     let proj: number
 
     for (let i = 0; i < vertices.length; i++) {
-      proj = vertices[i]!.x * axis.x + vertices[i]!.y * axis.y
+      proj = vertices[i]!.dot(axis)
       range.min = Math.min(range.min, proj)
       range.max = Math.max(range.max, proj)
     }
@@ -91,6 +112,22 @@ export namespace Collision {
     return projs[0] < projs[1] ? { min: projs[0], max: projs[1] } : { min: projs[1], max: projs[0] }
   }
 
+  export function getEdgeAcrossNormal(vertices: Point[], normal: VectorData): Geometry.Segment {
+    const vi = getVertexIndexWithMaxProjection(vertices, normal)
+    const v = vertices[vi]!
+    const prev_v = vertices[(vi == 0 ? vertices.length : vi) - 1]!
+    const next_v = vertices[(vi + 1) % vertices.length]!
+    // Prev. and next order are assumed clockwise,
+    // albeit the vertices of the segments are set in a linear order, 'a' to 'b',
+    // which at the vertices order is counter-clockwise
+    const prevEdge = new Geometry.Segment(v, prev_v)
+    const nextEdge = new Geometry.Segment(next_v, v)
+    // We want the most perpendicular edge to the normal, thus that with the smaller projection
+    return Math.abs(prevEdge.vector.dot(normal)) <= Math.abs(nextEdge.vector.dot(normal))
+      ? prevEdge
+      : nextEdge
+  }
+
   export function findContactPointsOnPolygon(
     origin: Point,
     vertices: Point[],
@@ -99,13 +136,13 @@ export namespace Collision {
     if (!ref_tracking) {
       ref_tracking = { cp1: new Point(), cp1_minDistSqrd: Infinity, validCount: 1 }
     }
-    let segment!: Geometry.Segment
+    const cp = new Point()
+    const segment = new Geometry.Segment()
+
     for (let i = 0; i < vertices.length; i++) {
-      segment = {
-        a: vertices[i]!,
-        b: vertices[(i + 1) % vertices.length]!,
-      }
-      const cp = Geometry.findClosestPointAtSegment(origin, segment)
+      segment.a = vertices[i]!
+      segment.b = vertices[(i + 1) % vertices.length]!
+      segment.getClosestPoint(origin, cp)
       const distSqrd = origin.subtract(cp).magnitudeSquared()
       if (
         ref_tracking.cp2 &&
@@ -143,10 +180,10 @@ export namespace Collision {
   export function correctContactDirectionIfNeeded(
     A: Collider.Shape,
     B: Collider.Shape,
-    ref_contact: Contact,
+    contact: Contact,
   ) {
-    if (B.center.subtract(A.center).dot(ref_contact.normal) < 0) {
-      ref_contact.normal.multiplyScalar(-1, ref_contact.normal)
+    if (B.center.subtract(A.center).dot(contact.normal) < 0) {
+      contact.normal.multiplyScalar(-1, contact.normal)
     }
   }
 
@@ -162,7 +199,11 @@ export namespace Collision {
     return A.shape.findContact(B.shape, includePoints)
   }
 
-  export function findContactPoints(verticesA: Point[], verticesB: Point[]): Point[] {
+  export function findContactPoints(
+    verticesA: Point[],
+    verticesB: Point[],
+    contact: Contact,
+  ): Point[] {
     const tracking: ContactPointTracking = {
       cp1: new Point(),
       cp1_minDistSqrd: Infinity,
@@ -175,15 +216,54 @@ export namespace Collision {
     for (let i = 0; i < verticesB.length; i++) {
       findContactPointsOnPolygon(verticesB[i]!, verticesA, tracking)
     }
+
+    findContactPointsViaClipping(verticesA, verticesB, contact)
+
     return tracking.validCount == 2 ? [tracking.cp1, tracking.cp2!] : [tracking.cp1]
   }
 
-  export function findInstances(
-    bodies: EntityBody[],
-    canCollide: (layerA: number, layerB: number) => boolean,
-  ): Instance[] {
-    const instances: Instance[] = []
+  export function findContactPointsViaClipping(
+    verticesA: Point[],
+    verticesB: Point[],
+    out_contact: Contact,
+  ): ContactPoint[] | undefined {
+    const edgeA = getEdgeAcrossNormal(verticesA, out_contact.normal)
+    const edgeB = getEdgeAcrossNormal(verticesB, out_contact.normal.multiplyScalar(-1))
+    const contactN = out_contact.normal
+    // Reference and incident edges; ref. is the most perpendicular to the contact's Normal,
+    // and thus used to clip the incident's edge vertices to get the contact points
+    // Source: https://dyn4j.org/2011/11/contact-points-using-clipping/
+    let refEdge: Geometry.Segment, incEdge: Geometry.Segment
+    let shouldFlip = false
+    if (Math.abs(edgeA.vector.dot(contactN)) < Math.abs(edgeB.vector.dot(contactN))) {
+      refEdge = edgeA
+      incEdge = edgeB
+    } else {
+      refEdge = edgeB
+      incEdge = edgeA
+      shouldFlip = true
+    }
+    // Normalize refEdge to use as axis
+    const axis = refEdge.vector.normalize()
+    incEdge.projectAndClipByMargin(axis, axis.dot(refEdge.a))
 
-    return instances
+    axis.multiplyScalar(-1, axis)
+    incEdge.projectAndClipByMargin(axis, axis.dot(refEdge.b))
+
+    const cps: ContactPoint[] = []
+    const refN = axis.crossScalar(-1)
+    const aRefProj = refN.dot(refEdge.a)
+    let depth = refN.dot(incEdge.a) - aRefProj
+    if (depth <= 0) {
+      cps.push({ point: incEdge.a, depth: -depth })
+    }
+    depth = refN.dot(incEdge.b) - aRefProj
+    if (depth <= 0) {
+      cps.push({ point: incEdge.b, depth: -depth })
+    }
+
+    out_contact.depth = ExtraMath.average(...cps.map((cp) => cp.depth))
+
+    return cps
   }
 }

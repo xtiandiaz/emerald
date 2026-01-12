@@ -1,19 +1,55 @@
 import { Point } from 'pixi.js'
+import type { Vector } from './types'
 
 export namespace Geometry {
-  export type Segment = { a: Point; b: Point }
+  export class Segment {
+    get vector(): Vector {
+      return this.b.subtract(this.a)
+    }
 
-  export function findClosestPointAtSegment(origin: Point, segment: Geometry.Segment): Point {
-    const ao = origin.subtract(segment.a)
-    const ab = segment.b.subtract(segment.a)
-    const segmentDistSq = ab.magnitudeSquared()
-    const normDist = ao.dot(ab) / segmentDistSq
-    if (normDist <= 0) {
-      return segment.a
-    } else if (normDist >= 1) {
-      return segment.b
-    } else {
-      return segment.a.add(ab.multiplyScalar(normDist))
+    get magnitudeSqrd(): number {
+      return this.vector.magnitudeSquared()
+    }
+
+    constructor(
+      public a = new Point(),
+      public b = new Point(),
+    ) {}
+
+    getPointAtNormalizedDistance(normDist: number, out_point?: Point): Point {
+      if (normDist <= 0) {
+        return this.a
+      } else if (normDist >= 1) {
+        return this.b
+      } else {
+        out_point ??= new Point()
+        return this.a.add(this.vector.multiplyScalar(normDist, out_point), out_point)
+      }
+    }
+
+    getClosestPoint(to: Point, out_closestPoint?: Point): Point {
+      const targetVector = to.subtract(this.a)
+      out_closestPoint ??= new Point()
+
+      return this.getPointAtNormalizedDistance(
+        targetVector.dot(this.vector) / this.magnitudeSqrd,
+        out_closestPoint,
+      )
+    }
+
+    projectAndClipByMargin(axis: Vector, margin: number) {
+      const aProjByMargin = axis.dot(this.a) - margin
+      const bProjByMargin = axis.dot(this.b) - margin
+
+      if (aProjByMargin * bProjByMargin < 0) {
+        const newPoint = new Point()
+        this.getPointAtNormalizedDistance(aProjByMargin / (aProjByMargin - bProjByMargin), newPoint)
+        if (aProjByMargin < 0) {
+          this.a = newPoint
+        } else {
+          this.b = newPoint
+        }
+      }
     }
   }
 

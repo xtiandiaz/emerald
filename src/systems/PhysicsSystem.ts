@@ -111,8 +111,8 @@ export class PhysicsSystem extends System {
   }
 
   private drawCollision(contact: Collision.Contact) {
-    for (const point of contact.points!) {
-      this.debug.circle(point.x, point.y, 5).stroke({ color: 0xffffff, width: 2 })
+    for (const cp of contact.points!) {
+      this.debug.circle(cp.point.x, cp.point.y, 5).stroke({ color: 0xffffff, width: 2 })
     }
   }
 }

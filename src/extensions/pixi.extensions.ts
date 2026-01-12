@@ -20,6 +20,7 @@ declare global {
   interface Vector2Math {
     clamp<T extends PointData = Point>(min: PointData, max: PointData, outVector?: T): T
     clampScalar<T extends PointData = Point>(min: number, max: number, outVector?: T): T
+    crossScalar<T extends PointData = Vector>(scalar: number, outVector?: T): T
     divideBy<T extends PointData = Point>(other: T, outVector?: T): T
     divideByScalar<T extends PointData = Point>(scalar: number, outVector?: T): T
     isNearlyEqual(to: PointData, minDistance?: number): boolean
@@ -31,65 +32,70 @@ Point.prototype.clamp = function <T extends PointData = Point>(
   this,
   min: PointData,
   max: PointData,
-  outVector?: T,
+  out_vector?: T,
 ): T {
-  if (!outVector) {
-    outVector = new Point() as PointData as T
-  }
-  outVector.x = clamp(this.x, min.x, max.x)
-  outVector.y = clamp(this.y, min.y, max.y)
+  out_vector ??= new Point() as PointData as T
+  out_vector.x = clamp(this.x, min.x, max.x)
+  out_vector.y = clamp(this.y, min.y, max.y)
 
-  return outVector
+  return out_vector
 }
 
 Point.prototype.clampScalar = function <T extends PointData = Point>(
   this,
   min: number,
   max: number,
-  outVector?: T,
+  out_vector?: T,
 ): T {
-  if (!outVector) {
-    outVector = new Point() as PointData as T
-  }
-  outVector.x = clamp(this.x, min, max)
-  outVector.y = clamp(this.y, min, max)
+  out_vector ??= new Point() as PointData as T
+  out_vector.x = clamp(this.x, min, max)
+  out_vector.y = clamp(this.y, min, max)
 
-  return outVector
+  return out_vector
+}
+
+Vector.prototype.crossScalar = function <T extends PointData = Vector>(
+  this,
+  scalar: number,
+  out_vector?: T,
+) {
+  out_vector ??= new Point() as PointData as T
+  const x = this.x
+  out_vector.x = -this.y * scalar
+  out_vector.y = x * scalar
+
+  return out_vector
 }
 
 Point.prototype.divideBy = function <T extends PointData = Point>(
   this,
   other: T,
-  outVector?: T,
+  out_vector?: T,
 ): T {
-  if (!outVector) {
-    outVector = new Point() as PointData as T
-  }
-  outVector.x = this.x / other.x
-  outVector.y = this.y / other.y
+  out_vector ??= new Point() as PointData as T
+  out_vector.x = this.x / other.x
+  out_vector.y = this.y / other.y
 
-  return outVector
+  return out_vector
 }
 
 Point.prototype.divideByScalar = function <T extends PointData = Point>(
   this,
   scalar: number,
-  outVector?: T,
+  out_vector?: T,
 ): T {
-  return this.divideBy(new Point(scalar, scalar) as PointData as T, outVector)
+  return this.divideBy(new Point(scalar, scalar) as PointData as T, out_vector)
 }
 
 Point.prototype.isNearlyEqual = function (to: PointData, minDistance: number = 0.001): boolean {
   return this.subtract(to).magnitudeSquared() <= minDistance * minDistance
 }
 
-Vector.prototype.orthogonalize = function <T extends PointData = Vector>(this, outVector?: T): T {
-  if (!outVector) {
-    outVector = new Point() as PointData as T
-  }
+Vector.prototype.orthogonalize = function <T extends PointData = Vector>(this, out_vector?: T): T {
+  out_vector ??= new Point() as PointData as T
   const x = this.x
-  outVector.x = -this.y
-  outVector.y = x
+  out_vector.x = -this.y
+  out_vector.y = x
 
-  return outVector
+  return out_vector
 }
