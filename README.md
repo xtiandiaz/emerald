@@ -11,9 +11,8 @@ A simple game engine rendered with [PixiJS](https://github.com/pixijs/pixijs/) a
 
 ### Physics
 
-- Optimize the finding of contact points
+- Weigh impulses by the depth of the contact points
 - Calculate mass and inertia for polygons of any number of vertices
-- Use collision sensor to test gone body removal
 
 ### Input
 
@@ -21,3 +20,7 @@ A simple game engine rendered with [PixiJS](https://github.com/pixijs/pixijs/) a
 
 - Add interface to zoom and pan on world by means of a 'camera' object
 - Add system to focus camera on targets
+
+### Debug
+
+- Add stats

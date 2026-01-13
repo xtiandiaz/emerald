@@ -2,6 +2,7 @@ import {
   Container,
   EventEmitter,
   FederatedPointerEvent,
+  Point,
   type ContainerChild,
   type ContainerEvents,
   type FederatedEventMap,
@@ -28,7 +29,7 @@ export namespace Input {
     eventType: KeyboardEventType
   }
   export interface PointerControl extends Control {
-    eventType: keyof FederatedEventMap
+    eventType: PointerEventType
   }
 
   export namespace Control {

@@ -6,10 +6,6 @@ export interface FixedTime {
   reserve: number
 }
 
-export interface GameOptions extends ApplicationOptions {
-  physics: Partial<PhysicsSystemOptions>
-}
-
 export interface GameState {
   isPaused: boolean
 }

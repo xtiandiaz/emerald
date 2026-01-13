@@ -1,13 +1,20 @@
-import { Application, Ticker } from 'pixi.js'
-import { type FixedTime, type GameOptions, type GameState } from '.'
+import { Application, Container, Ticker, type ApplicationOptions } from 'pixi.js'
+import { type FixedTime, type GameState } from '.'
 import { Scene, Screen, World, type SignalBus, type Disconnectable, clamp } from '../core'
 import { SignalController } from '../controllers'
 import { ScreenResized } from '../signals'
+import { Debug } from '../debug'
+
+export interface GameOptions extends ApplicationOptions {
+  debug: Debug.Options
+}
 
 export class Game<State extends GameState> extends Application {
   protected readonly world = new World()
   protected readonly signalController = new SignalController()
   protected scene?: Scene
+  private display = new Container()
+  private debugDisplay?: Debug.Display
   private fixedTime: FixedTime = {
     step: 1 / 60,
     reserve: 0,
@@ -20,7 +27,7 @@ export class Game<State extends GameState> extends Application {
   ) {
     super()
 
-    this.stage.addChild(this.world)
+    this.stage.addChild(this.world, this.display)
   }
 
   async init(options: Partial<GameOptions>, startScene?: string): Promise<void> {
@@ -31,11 +38,18 @@ export class Game<State extends GameState> extends Application {
     this.ticker.add(this.fixedUpdate, this)
     this.ticker.add(this.update, this)
 
-    this.renderer.on('resize', this.updateScreen, this)
-    this.updateScreen()
+    this.renderer.on('resize', this.onResized, this)
+    this.onResized()
+
+    this.display.hitArea = this.screen
 
     if (startScene) {
       await this.switchToScene(startScene)
+    }
+    if (options.debug) {
+      this.debugDisplay = new Debug.Display(options.debug)
+      this.debugDisplay.stats?.init(this.ticker, this.world)
+      this.stage.addChild(this.debugDisplay)
     }
   }
 
@@ -46,7 +60,7 @@ export class Game<State extends GameState> extends Application {
     this.connections.length = 0
 
     this.ticker.remove(this.update, this)
-    this.renderer.off('resize', this.updateScreen, this)
+    this.renderer.off('resize', this.onResized, this)
 
     this.scene?.deinit()
     this.scene = undefined
@@ -58,7 +72,7 @@ export class Game<State extends GameState> extends Application {
       return
     }
 
-    await nextScene.init(this.world, this.signalController)
+    await nextScene.init(this.world, this.signalController, this.display)
 
     if (this.scene) {
       this.scene.deinit()
@@ -95,10 +109,9 @@ export class Game<State extends GameState> extends Application {
     this.signalController.emitQueuedSignals()
   }
 
-  private updateScreen() {
-    Screen._w = this.renderer.width
-    Screen._h = this.renderer.height
-
-    this.signalController.queue(new ScreenResized(Screen._w, Screen._h))
+  private onResized() {
+    Screen._w = this.screen.width
+    Screen._h = this.screen.height
+    this.signalController.queue(new ScreenResized(Screen.width, Screen.height))
   }
 }

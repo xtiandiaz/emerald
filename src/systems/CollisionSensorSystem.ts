@@ -18,7 +18,7 @@ export class CollisionSensorSystem extends System {
     const bodies = world._bodies
     let entity: Entity
 
-    for (let i = 0; i < sensors.length - 1; i++) {
+    for (let i = 0; i < sensors.length; i++) {
       const [idA, A] = sensors[i]!
 
       A.collidedIds.clear()
@@ -37,7 +37,7 @@ export class CollisionSensorSystem extends System {
           B.collidedIds.add(idA)
         }
       }
-      for (let k = 0; k < bodies.length - 1; k++) {
+      for (let k = 0; k < bodies.length; k++) {
         const [idC, C] = bodies[k]!
 
         if (this.isTrigger(A, C)) {

@@ -1,9 +1,4 @@
-import {
-  FederatedPointerEvent,
-  type Container,
-  type FederatedEvent,
-  type FederatedEventMap,
-} from 'pixi.js'
+import { Container, FederatedPointerEvent, type FederatedEventMap } from 'pixi.js'
 import { connectContainerEvent, connectDocumentEvent, Input } from '.'
 import type { Disconnectable } from '../core'
 import '../extensions'
@@ -15,13 +10,17 @@ export class InputController<K extends string> {
   // Actions to linked pointer event types
   private pointerEventTypeToActionsMap = new Map<keyof FederatedEventMap, Set<K>>()
   private connections: Disconnectable[] = []
+  private pad?: Container
 
   init(
     inputMap: Record<K, Input.Control>,
-    inputStage: Container,
+    inputPad: Container,
     onSignal: (signal: Input.Signal) => void,
   ) {
     this.onSignal = onSignal
+
+    inputPad.interactive = true
+    this.pad = inputPad
 
     const entries = Object.entries<Input.Control>(inputMap)
     const keyboardEntries = entries.filter(
@@ -64,12 +63,15 @@ export class InputController<K extends string> {
     }
     for (const [eventType, actions] of this.pointerEventTypeToActionsMap) {
       this.connections.push(
-        connectContainerEvent(eventType, inputStage, (event: FederatedEvent) => {
+        connectContainerEvent(eventType, inputPad, (event) => {
+          if (!(event instanceof FederatedPointerEvent)) {
+            return
+          }
           actions.forEach((action) =>
             this.onSignal({
               source: Input.Source.POINTER,
               action,
-              event: event as FederatedPointerEvent,
+              event,
             } as Input.PointerSignal),
           )
         }),
@@ -78,6 +80,9 @@ export class InputController<K extends string> {
   }
 
   deinit() {
+    this.pad!.interactive = false
+    this.pad = undefined
+
     this.connections.forEach((c) => c.disconnect())
     this.connections.length = 0
   }

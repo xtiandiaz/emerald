@@ -253,13 +253,13 @@ export namespace Collision {
     const cps: ContactPoint[] = []
     const refN = axis.crossScalar(-1)
     const aRefProj = refN.dot(refEdge.a)
-    let depth = refN.dot(incEdge.a) - aRefProj
-    if (depth <= 0) {
-      cps.push({ point: incEdge.a, depth: -depth })
+    let depth = aRefProj - refN.dot(incEdge.a)
+    if (depth >= 0) {
+      cps.push({ point: incEdge.a, depth: depth })
     }
-    depth = refN.dot(incEdge.b) - aRefProj
-    if (depth <= 0) {
-      cps.push({ point: incEdge.b, depth: -depth })
+    depth = aRefProj - refN.dot(incEdge.b)
+    if (depth >= 0) {
+      cps.push({ point: incEdge.b, depth: depth })
     }
 
     out_contact.depth = ExtraMath.average(...cps.map((cp) => cp.depth))
