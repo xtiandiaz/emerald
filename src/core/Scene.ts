@@ -41,6 +41,6 @@ export abstract class Scene {
   }
 
   protected onInput(signal: Input.Signal, world: World): void {
-    this.systems.forEach((s) => s.input?.(signal, world))
+    this.systems.forEach((s) => s.onInput?.(signal, world))
   }
 }

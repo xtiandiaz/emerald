@@ -1,7 +1,6 @@
 import { Container, FederatedPointerEvent, type FederatedEventMap } from 'pixi.js'
-import { connectContainerEvent, connectDocumentEvent, Input } from '.'
 import type { Disconnectable } from '../core'
-import '../extensions'
+import { Input } from '.'
 
 export class InputController<K extends string> {
   private onSignal!: (signal: Input.Signal) => void
@@ -36,10 +35,7 @@ export class InputController<K extends string> {
       }
     }
     this.connections.push(
-      connectDocumentEvent('keydown', (event: KeyboardEvent) => {
-        if (event.repeat) {
-          return
-        }
+      Input.connectDocumentEvent('keydown', (event: KeyboardEvent) => {
         this.keyCodeToActionsMap.get(event.code)?.forEach((action) => {
           this.onSignal({
             source: Input.Source.KEYBOARD,
@@ -63,7 +59,7 @@ export class InputController<K extends string> {
     }
     for (const [eventType, actions] of this.pointerEventTypeToActionsMap) {
       this.connections.push(
-        connectContainerEvent(eventType, inputPad, (event) => {
+        Input.connectContainerEvent(eventType, inputPad, (event) => {
           if (!(event instanceof FederatedPointerEvent)) {
             return
           }
