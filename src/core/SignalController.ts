@@ -5,7 +5,7 @@ import type {
   AnySignalConnector,
   SomeSignal,
   Disconnectable,
-} from '../core'
+} from '.'
 
 export class SignalController implements SignalBus {
   private connectors = new Map<string, Set<AnySignalConnector>>()

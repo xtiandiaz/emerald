@@ -1,4 +1,5 @@
-import { Vector, Collider } from '../core'
+import { Vector } from '../core'
+import { Collider } from '../collision'
 
 export namespace Physics {
   export const NEARLY_ZERO_MAGNITUDE = 0.001 // 1 mm

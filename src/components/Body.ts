@@ -1,6 +1,7 @@
 import { Point, Transform, type PointData } from 'pixi.js'
-import { Vector, Collider, Component } from '../core'
-import { clamp01, Physics } from '../'
+import { Vector, Component, clamp01 } from '../core'
+import { Collider } from '../collision'
+import { Physics } from '../physics'
 
 export interface BodyOptions {
   isStatic: boolean

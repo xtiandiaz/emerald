@@ -1,36 +1,50 @@
-import { Container, type Renderer, Text, Ticker } from 'pixi.js'
-import { ExtraMath } from '../extras'
-import type { World } from '..'
+import { Container, Text, Ticker } from 'pixi.js'
+import type { Disconnectable, SignalBus, World } from '..'
+import { DebugSignal } from './DebugSignal'
 
 export namespace Debug {
-  export interface Options {
-    showStats: boolean
+  export interface GameOptions {
+    showsStats: boolean
+  }
+
+  export interface PhysicsSystemOptions {
+    reportsSettings: boolean
+    drawsCollisions: boolean
   }
 
   export class Display extends Container {
-    stats?: StatsDisplay
+    private stats?: StatsDisplay
 
-    constructor(options: Partial<Options>) {
+    constructor(private options: Partial<GameOptions>) {
       super()
+    }
 
-      if (options.showStats) {
+    init(ticker: Ticker, world: World, signalBus: SignalBus) {
+      if (this.options.showsStats) {
         this.stats = new StatsDisplay()
         this.addChild(this.stats)
+
+        this.stats.init(ticker, world, signalBus)
       }
+    }
+
+    deinit() {
+      this.stats?.deinit()
     }
   }
 
-  export interface Stats {
+  interface Stats {
     fps: number
     bodyCount: number
     collisionSensorCount: number
+    physicsIterations?: number
   }
 
   export class StatsDisplay extends Container {
     private text = new Text({
       text: 'stats',
       style: {
-        fontSize: 16,
+        fontSize: 20,
         fill: 0xffffff,
       },
     })
@@ -39,26 +53,38 @@ export namespace Debug {
       bodyCount: 0,
       collisionSensorCount: 0,
     }
-    private ticker = new Ticker()
+    private _ticker = new Ticker()
+    private connections: Disconnectable[] = []
 
     constructor() {
       super()
 
-      this.ticker.maxFPS = 5
+      this._ticker.maxFPS = 5
 
       this.addChild(this.text)
     }
 
-    init(gameTicker: Ticker, world: World) {
-      this.ticker.add((_) => {
+    init(ticker: Ticker, world: World, signalBus: SignalBus) {
+      this.connections.push(
+        signalBus.connect(DebugSignal.PhysicsEnabled, (s) => {
+          this.stats.physicsIterations = s.iterations
+        }),
+      )
+
+      this._ticker.add((_) => {
         const s = this.stats
-        s.fps = Math.round(gameTicker.FPS * 10) / 10
+        s.fps = Math.round(ticker.FPS * 10) / 10
         s.bodyCount = world._bodies.length
         s.collisionSensorCount = world._collisionSensors.length
 
         this.update()
       })
-      this.ticker.start()
+      this._ticker.start()
+    }
+
+    deinit() {
+      this.connections.forEach((c) => c.disconnect())
+      this.connections.length = 0
     }
 
     private update() {
@@ -68,6 +94,7 @@ export namespace Debug {
       string += `FPS: ${stats.fps}`
       string += `\nBodies: ${stats.bodyCount}`
       string += `\nCollision sensors: ${stats.collisionSensorCount}`
+      if (stats.physicsIterations) string += `\nPhysics iterations: ${stats.physicsIterations}`
 
       this.text.text = string
     }

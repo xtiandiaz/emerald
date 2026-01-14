@@ -1,12 +1,19 @@
 import { Application, Container, Ticker, type ApplicationOptions } from 'pixi.js'
 import { type FixedTime, type GameState } from '.'
-import { Scene, Screen, World, type SignalBus, type Disconnectable, clamp } from '../core'
-import { SignalController } from '../controllers'
+import {
+  Scene,
+  Screen,
+  SignalController,
+  World,
+  clamp,
+  type SignalBus,
+  type Disconnectable,
+} from '../core'
 import { ScreenResized } from '../signals'
 import { Debug } from '../debug'
 
 export interface GameOptions extends ApplicationOptions {
-  debug: Debug.Options
+  debug: Debug.GameOptions
 }
 
 export class Game<State extends GameState> extends Application {
@@ -20,6 +27,7 @@ export class Game<State extends GameState> extends Application {
     reserve: 0,
   }
   private connections: Disconnectable[] = []
+  private options?: Partial<GameOptions>
 
   constructor(
     public state: State,
@@ -31,7 +39,11 @@ export class Game<State extends GameState> extends Application {
   }
 
   async init(options: Partial<GameOptions>, startScene?: string): Promise<void> {
+    this.options = options
+
     await super.init(options)
+
+    this.setUpDebugIfNeeded()
 
     this.connections.push(...(this.connect?.(this.signalController) ?? []))
 
@@ -46,11 +58,6 @@ export class Game<State extends GameState> extends Application {
     if (startScene) {
       await this.switchToScene(startScene)
     }
-    if (options.debug) {
-      this.debugDisplay = new Debug.Display(options.debug)
-      this.debugDisplay.stats?.init(this.ticker, this.world)
-      this.stage.addChild(this.debugDisplay)
-    }
   }
 
   connect?(signalBus: SignalBus): Disconnectable[]
@@ -64,6 +71,8 @@ export class Game<State extends GameState> extends Application {
 
     this.scene?.deinit()
     this.scene = undefined
+
+    this.debugDisplay?.deinit()
   }
 
   async switchToScene(name: string) {
@@ -113,5 +122,15 @@ export class Game<State extends GameState> extends Application {
     Screen._w = this.screen.width
     Screen._h = this.screen.height
     this.signalController.queue(new ScreenResized(Screen.width, Screen.height))
+  }
+
+  private setUpDebugIfNeeded() {
+    if (!this.options?.debug) {
+      return
+    }
+    this.debugDisplay = new Debug.Display(this.options.debug)
+    this.stage.addChild(this.debugDisplay)
+
+    this.debugDisplay.init(this.ticker, this.world, this.signalController)
   }
 }

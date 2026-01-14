@@ -1,19 +1,23 @@
 import { Graphics } from 'pixi.js'
 import { System, World, Vector, type SignalBus } from '../core'
-import { PhysicsEngine } from '../physics'
-import { Collision, Physics } from '../'
+import { Physics, PhysicsEngine } from '../physics'
+import { Collision } from '../collision'
+import { DebugSignal } from '../debug/DebugSignal'
 
 export interface PhysicsSystemOptions {
   gravity: Physics.Gravity
   iterations: number
   PPM: number // Pixels Per Meter
   collisionLayerMap?: Collision.LayerMap
+  debug?: {
+    rendersCollisions: boolean
+  }
 }
 
 export class PhysicsSystem extends System {
   private engine = new PhysicsEngine()
   private options: PhysicsSystemOptions
-  private debug = new Graphics()
+  private debugGraphics?: Graphics
 
   constructor(options?: Partial<PhysicsSystemOptions>) {
     super()
@@ -37,8 +41,7 @@ export class PhysicsSystem extends System {
   }
 
   init(world: World, signalBus: SignalBus): void {
-    world.addChild(this.debug)
-    world.getLayer(World.Layer.DEBUG).attach(this.debug)
+    this.initDebugIfNeeded(world, signalBus)
   }
 
   fixedUpdate(world: World, signalBus: SignalBus, dT: number): void {
@@ -46,9 +49,9 @@ export class PhysicsSystem extends System {
     const PPM = this.options.PPM
     const bodies = world._bodies
     const separation = new Vector()
-    const collisions: Collision.Instance[] = []
+    const collisions: Collision[] = []
     let contact: Collision.Contact | undefined
-    let collision: Collision.Instance
+    let collision: Collision | undefined
 
     for (let i = 0; i < bodies.length; i++) {
       bodies[i]![1].collidedIds.clear()
@@ -56,7 +59,7 @@ export class PhysicsSystem extends System {
 
     dT /= this.options.iterations
     for (let it = 0; it < this.options.iterations; it++) {
-      this.debug.clear()
+      this.debugGraphics?.clear()
 
       collisions.length = 0
 
@@ -75,25 +78,24 @@ export class PhysicsSystem extends System {
         for (let j = i + 1; j < bodies.length; j++) {
           const [idB, B] = bodies[j]!
 
-          contact = Collision.findContactIfCanCollide(
-            A,
-            B,
-            (lA, lB) => this.canCollide(lA, lB),
-            true,
-          )
-          if (contact) {
-            collisions.push({ A, B, ...contact })
-
-            A.collidedIds.add(idB)
-            B.collidedIds.add(idA)
+          if (!Collision.canCollide(A.layer, B.layer, this.options.collisionLayerMap)) {
+            continue
           }
+          contact = A.shape.findContact(B.shape, true)
+          if (!contact || !contact.points) {
+            continue
+          }
+          collisions.push({ A, B, points: contact.points, ...contact })
+
+          A.collidedIds.add(idB)
+          B.collidedIds.add(idA)
         }
       }
 
       for (let i = 0; i < collisions.length; i++) {
         collision = collisions[i]!
 
-        this.drawCollision(collision)
+        this.drawCollisionIfNeeded(collision)
 
         this.engine.separateBodies(
           collision.A,
@@ -106,13 +108,23 @@ export class PhysicsSystem extends System {
     }
   }
 
-  private canCollide(layerA: number, layerB: number): boolean {
-    return Collision.canCollide(layerA, layerB, this.options.collisionLayerMap)
+  private initDebugIfNeeded(world: World, signalBus: SignalBus) {
+    if (!this.options.debug) {
+      return
+    }
+    this.debugGraphics = new Graphics()
+    world.addChild(this.debugGraphics)
+    world.getLayer(World.Layer.DEBUG).attach(this.debugGraphics)
+
+    signalBus.emit(new DebugSignal.PhysicsEnabled(this.options.iterations))
   }
 
-  private drawCollision(contact: Collision.Contact) {
+  private drawCollisionIfNeeded(contact: Collision.Contact) {
+    if (!this.debugGraphics) {
+      return
+    }
     for (const cp of contact.points!) {
-      this.debug.circle(cp.point.x, cp.point.y, 5).stroke({ color: 0xffffff, width: 2 })
+      this.debugGraphics.circle(cp.point.x, cp.point.y, 5).stroke({ color: 0xffffff, width: 2 })
     }
   }
 }

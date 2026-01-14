@@ -42,6 +42,7 @@ export interface SignalBus {
   emit<T extends Signal>(signal: T): void
   queue<T extends Signal>(signal: T): void
   connect<T extends Signal>(type: SomeSignal<T>, connector: SignalConnector<T>): Disconnectable
+  disconnect<T extends Signal>(type: SomeSignal<T>, connector: SignalConnector<T>): void
 }
 
 export interface Disconnectable {

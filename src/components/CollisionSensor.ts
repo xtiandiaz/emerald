@@ -1,4 +1,5 @@
-import { Collider, Component } from '../core'
+import { Component } from '../core'
+import { Collider } from '../collision'
 
 export class CollisionSensor extends Component implements Collider {
   readonly collidedIds = new Set<number>()

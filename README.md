@@ -11,7 +11,6 @@ A simple game engine rendered with [PixiJS](https://github.com/pixijs/pixijs/) a
 
 ### Physics
 
-- Weigh impulses by the depth of the contact points
 - Calculate mass and inertia for polygons of any number of vertices
 
 ### Input
@@ -22,5 +21,3 @@ A simple game engine rendered with [PixiJS](https://github.com/pixijs/pixijs/) a
 - Add system to focus camera on targets
 
 ### Debug
-
-- Add stats

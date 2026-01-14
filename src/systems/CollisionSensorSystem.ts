@@ -1,4 +1,5 @@
-import { Collider, Collision, Entity, System, World, type SignalBus } from '../core'
+import { Entity, System, World, type SignalBus } from '../core'
+import { Collision, Collider } from '../collision'
 
 export interface CollisionSensorSystemOptions {
   collisionLayerMap?: Collision.LayerMap
@@ -48,14 +49,10 @@ export class CollisionSensorSystem extends System {
     }
   }
 
-  private isTrigger(A: Collider, B: Collider) {
+  private isTrigger(A: Collider, B: Collider): boolean {
     return (
-      Collision.findContactIfCanCollide(
-        A,
-        B,
-        (lA, lB) => Collision.canCollide(lA, lB, this.options.collisionLayerMap),
-        false,
-      ) != undefined
+      Collision.canCollide(A.layer, B.layer, this.options.collisionLayerMap) &&
+      A.shape.findContact(B.shape, false) != undefined
     )
   }
 }

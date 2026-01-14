@@ -1,6 +1,8 @@
 import { Assets, Container } from 'pixi.js'
-import { World, System, type Disconnectable, type SignalBus } from './'
+import { World, System, type Disconnectable, type SignalBus } from '../core'
 import { Input, InputController } from '../input'
+
+export interface SceneOptions {}
 
 export abstract class Scene {
   abstract readonly systems: System[]
@@ -8,7 +10,10 @@ export abstract class Scene {
   protected input = new InputController<keyof typeof this.inputMap>()
   protected connections: Disconnectable[] = []
 
-  constructor(public readonly name: string) {}
+  constructor(
+    public readonly name: string,
+    protected options?: Partial<SceneOptions>,
+  ) {}
 
   async load?(): Promise<void>
 

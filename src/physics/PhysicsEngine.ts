@@ -1,7 +1,8 @@
 import type { Point } from 'pixi.js'
 import { Physics } from './'
-import { Vector, type Collision } from '../core'
+import { Vector } from '../core'
 import { Body } from '../components'
+import { type Collision } from '../collision'
 import { ExtraMath } from '../extras'
 
 export class PhysicsEngine {
@@ -62,7 +63,7 @@ export class PhysicsEngine {
   /*  
     Collision Response: https://en.wikipedia.org/wiki/Collision_response#Impulse-based_reaction_model
   */
-  resolveCollision(collision: Collision.Instance) {
+  resolveCollision(collision: Collision) {
     if (!collision.points) {
       return
     }
@@ -73,12 +74,14 @@ export class PhysicsEngine {
     const pointCount = collision.points.length
     const coeffs = PhysicsEngine.getResolutionCoefficients(A, B)
     const sumInvMasses = A.invMass + B.invMass
+    const totalDepth = collision.points.reduce((acc, p) => (acc += p.depth), 0)
     const N = collision.normal
 
     this.clearImpulses()
 
     for (let i = 0; i < pointCount; i++) {
-      this.resetRotationRadii(A, B, collision.points[i]!.point, i)
+      const cp = collision.points[i]!
+      this.resetRotationRadii(A, B, cp.point, i)
 
       this.resetRelativeVelocity(A, B, i)
       const vrDotN = this.vrs[i]!.dot(N)
@@ -95,11 +98,13 @@ export class PhysicsEngine {
 
       // Reaction impulse
       const Jr = this.Jrs[i]!
-      Jr.add(N.multiplyScalar(this.jrs[i]! / massDenom / pointCount), Jr)
+      const weight = cp.depth / totalDepth
+      Jr.add(N.multiplyScalar((weight * this.jrs[i]!) / massDenom / pointCount), Jr)
     }
 
     for (let i = 0; i < pointCount; i++) {
-      this.resetRotationRadii(A, B, collision.points[i]!.point, i)
+      const cp = collision.points[i]!
+      this.resetRotationRadii(A, B, cp.point, i)
 
       this.resetRelativeVelocity(A, B, i)
       const vr = this.vrs[i]!
@@ -127,7 +132,8 @@ export class PhysicsEngine {
 
       // Frictional impulse
       const Jf = this.Jfs[i]!
-      Jf.add(this.T.multiplyScalar(jf / massDenom / pointCount), Jf)
+      const weight = cp.depth / totalDepth
+      Jf.add(this.T.multiplyScalar((weight * jf) / massDenom / pointCount), Jf)
     }
 
     this.applyImpulses(A, this.rAs, pointCount, -1)
