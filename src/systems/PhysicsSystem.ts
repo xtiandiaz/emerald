@@ -1,8 +1,8 @@
-import { Graphics } from 'pixi.js'
 import { System, World, Vector, type SignalBus } from '../core'
 import { Physics, PhysicsEngine } from '../physics'
 import { Collision } from '../collision'
 import { DebugSignal } from '../debug/DebugSignal'
+import { Debug } from '../debug'
 
 export interface PhysicsSystemOptions {
   gravity: Physics.Gravity
@@ -17,7 +17,7 @@ export interface PhysicsSystemOptions {
 export class PhysicsSystem extends System {
   private engine = new PhysicsEngine()
   private options: PhysicsSystemOptions
-  private debugGraphics?: Graphics
+  private debugGraphics?: Debug.Graphics
 
   constructor(options?: Partial<PhysicsSystemOptions>) {
     super()
@@ -71,6 +71,8 @@ export class PhysicsSystem extends System {
         const entity = world.getEntity(entityId)!
         entity.position.copyFrom(body.position)
         entity.rotation = body.rotation
+
+        this.debugGraphics?.drawCollider(body)
       }
 
       for (let i = 0; i < bodies.length - 1; i++) {
@@ -95,7 +97,7 @@ export class PhysicsSystem extends System {
       for (let i = 0; i < collisions.length; i++) {
         collision = collisions[i]!
 
-        this.drawCollisionIfNeeded(collision)
+        this.debugGraphics?.drawCollision(collision)
 
         this.engine.separateBodies(
           collision.A,
@@ -112,19 +114,10 @@ export class PhysicsSystem extends System {
     if (!this.options.debug) {
       return
     }
-    this.debugGraphics = new Graphics()
+    this.debugGraphics = new Debug.Graphics()
     world.addChild(this.debugGraphics)
     world.getLayer(World.Layer.DEBUG).attach(this.debugGraphics)
 
     signalBus.emit(new DebugSignal.PhysicsEnabled(this.options.iterations))
-  }
-
-  private drawCollisionIfNeeded(contact: Collision.Contact) {
-    if (!this.debugGraphics) {
-      return
-    }
-    for (const cp of contact.points!) {
-      this.debugGraphics.circle(cp.point.x, cp.point.y, 5).stroke({ color: 0xffffff, width: 2 })
-    }
   }
 }

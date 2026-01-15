@@ -6,12 +6,15 @@ A simple game engine rendered with [PixiJS](https://github.com/pixijs/pixijs/) a
 
 ### General
 
-- Add randomness utils (from Tungsten)
 - Add probability utils
+
+### Collision
+
+- Add option to limit collisions to only AABB intersections if no rotation is needed, at the Collision Sensor System
 
 ### Physics
 
-- Calculate mass and inertia for polygons of any number of vertices
+- Explore the generation of tile-map collider(s) and how to handle collisions
 
 ### Input
 
@@ -19,5 +22,14 @@ A simple game engine rendered with [PixiJS](https://github.com/pixijs/pixijs/) a
 
 - Add interface to zoom and pan on world by means of a 'camera' object
 - Add system to focus camera on targets
+
+### Tile-map
+
+- Explore the implementation of a basic tile-map, its models and systems
+
+### Editor
+
+- Assess the implementation of a polygon collider editor
+- Assess the implementation of a tile-map editor
 
 ### Debug

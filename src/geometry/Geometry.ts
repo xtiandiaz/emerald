@@ -1,5 +1,6 @@
 import { Point, type PointData } from 'pixi.js'
 import type { Vector, Range, VectorData } from '../core/types'
+import { ExtraMath } from '../extras'
 
 export namespace Geometry {
   export class Segment {
@@ -88,10 +89,18 @@ export namespace Geometry {
     return true
   }
 
+  export interface AreaProperties {
+    // As per Area Density: https://en.wikipedia.org/wiki/Area_density
+    mass: number
+    // As per Second Moment of Inertia: https://en.wikipedia.org/wiki/Second_moment_of_area
+    momentOfInertia: number
+    centroid: Point
+  }
+
   export namespace Circle {
     export const area = (radius: number) => Math.PI * radius * radius
 
-    export function getProjectionRange(position: PointData, radius: number, axis: Vector): Range {
+    export const projectionRange = (position: PointData, radius: number, axis: Vector): Range => {
       const dot = axis.x * position.x + axis.y * position.y
       const projs: [number, number] = [dot - radius, dot + radius]
 
@@ -99,34 +108,67 @@ export namespace Geometry {
         ? { min: projs[0], max: projs[1] }
         : { min: projs[1], max: projs[0] }
     }
+
+    export const areaProperties = (
+      x: number,
+      y: number,
+      radius: number,
+      density: number = 1,
+    ): AreaProperties => {
+      const area = Circle.area(radius)
+      return {
+        mass: area * density,
+        // Listed in: https://en.wikipedia.org/wiki/List_of_second_moments_of_area
+        // where PI * r^4 / 2 = area * r^2 / 2
+        momentOfInertia: (area * radius * radius) / 2,
+        centroid: new Point(x, y),
+      }
+    }
   }
 
-  export namespace ConvexPolygon {
-    /* 
-    Following 'integraph' of a polygon technique: https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
-  */
-    export function calculateCentroid(vertices: number[]) {
-      const c = new Point()
-      let x0: number, y0: number, x1: number, y1: number
-      let doubleTotalArea = 0
-      let crossProdSignedParalleloArea: number
-      for (let i = 0; i < vertices.length; i += 2) {
-        x0 = vertices[i]!
-        y0 = vertices[i + 1]!
-        x1 = vertices[(i + 2) % vertices.length]!
-        y1 = vertices[(i + 3) % vertices.length]!
-        crossProdSignedParalleloArea = x0 * y1 - x1 * y0
-        c.x += (x0 + x1) * crossProdSignedParalleloArea
-        c.y += (y0 + y1) * crossProdSignedParalleloArea
-        doubleTotalArea += crossProdSignedParalleloArea
-      }
-      c.x /= 6 * 0.5 * doubleTotalArea
-      c.y /= 6 * 0.5 * doubleTotalArea
+  export namespace Polygon {
+    /*
+      Using 'shoelace' formula: https://en.wikipedia.org/wiki/Shoelace_formula
+    */
+    export const area = (vertices: Point[]) => {
+      let doubleArea = 0
+      let v0: Point, v1: Point
 
-      return c
+      for (let i = 0; i < vertices.length; i++) {
+        v0 = vertices[i]!
+        v1 = vertices[(i + 1) % vertices.length]!
+        doubleArea += v0.cross(v1)
+      }
+
+      return doubleArea * 0.5
     }
 
-    export function getProjectionRange(vertices: Point[], axis: VectorData): Range {
+    /* 
+      Calculation of centroid following 'integraph of a polygon' technique: 
+      https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
+      
+      For the area, using 'shoelace' formula: https://en.wikipedia.org/wiki/Shoelace_formula
+    */
+    export const centroid = (vertices: Point[]) => {
+      const centroid = new Point()
+      let v0: Point, v1: Point
+      let doubleTotalArea = 0
+      let crossProdSignedParalleloArea: number
+
+      for (let i = 0; i < vertices.length; i++) {
+        v0 = vertices[i]!
+        v1 = vertices[(i + 1) % vertices.length]!
+        crossProdSignedParalleloArea = v0.cross(v1)
+        centroid.x += (v0.x + v1.x) * crossProdSignedParalleloArea
+        centroid.y += (v0.y + v1.y) * crossProdSignedParalleloArea
+        doubleTotalArea += crossProdSignedParalleloArea
+      }
+      centroid.divideByScalar(6 * doubleTotalArea * 0.5, centroid)
+
+      return centroid
+    }
+
+    export const projectionRange = (vertices: Point[], axis: VectorData): Range => {
       const range: Range = { min: Infinity, max: -Infinity }
       let proj: number
 
@@ -136,6 +178,37 @@ export namespace Geometry {
         range.max = Math.max(range.max, proj)
       }
       return range
+    }
+
+    export const areaProperties = (vertices: Point[], density: number = 1): AreaProperties => {
+      const centroid = new Point()
+      let v0: Point, v1: Point
+      let crossProdSignedParalleloArea: number, triangleArea: number
+      let area = 0
+      let momentOfInertia = 0
+
+      for (let i = 0; i < vertices.length; i++) {
+        v0 = vertices[i]!
+        v1 = vertices[(i + 1) % vertices.length]!
+        crossProdSignedParalleloArea = v0.cross(v1)
+        centroid.x += (v0.x + v1.x) * crossProdSignedParalleloArea
+        centroid.y += (v0.y + v1.y) * crossProdSignedParalleloArea
+        triangleArea = crossProdSignedParalleloArea * 0.5
+        area += triangleArea
+        // Triangular MoI listed in: https://en.wikipedia.org/wiki/List_of_moments_of_inertia
+        momentOfInertia += (triangleArea * density * (v0.dot(v0) + v0.dot(v1) + v1.dot(v1))) / 6
+      }
+      // According to formula for polygons: https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
+      centroid.divideByScalar(6 * area, centroid)
+      // Moment of Inertia (I=mr^2) translated to centroid once calculated
+      const mass = area * density
+      momentOfInertia -= mass * centroid.dot(centroid)
+
+      return {
+        mass,
+        momentOfInertia,
+        centroid,
+      }
     }
 
     export function getVertexIndexWithMaxProjection(vertices: Point[], axis: VectorData): number {
@@ -180,6 +253,19 @@ export namespace Geometry {
         }
       }
       return index
+    }
+
+    export function createRegularPolygonVertices(sides: number, radius: number): Point[] {
+      sides = ExtraMath.clamp(Math.round(sides), 3, 16)
+      radius = ExtraMath.clamp(radius, 1, Infinity)
+      const vertices: Point[] = []
+      const angleStep = (2 * Math.PI) / sides
+
+      for (let i = 0; i < sides; i++) {
+        vertices.push(new Point(radius * Math.cos(i * angleStep), radius * Math.sin(i * angleStep)))
+      }
+
+      return vertices
     }
   }
 }

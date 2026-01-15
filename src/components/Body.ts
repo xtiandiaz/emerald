@@ -80,9 +80,9 @@ export class Body extends Component implements Collider, BodyOptions {
     this.isKinematic = options?.isKinematic ?? false
     this.layer = options?.layer ?? 1
 
-    this.mass = this.isStatic ? 0 : Physics.calculateMass(shape.area, 1)
+    this.mass = this.isStatic ? 0 : shape.areaProperties.mass
     this.invMass = this.mass > 0 ? 1 / this.mass : 0
-    this.inertia = this.isStatic ? 0 : Physics.calculateColliderShapeInertia(shape, this.mass)
+    this.inertia = this.isStatic ? 0 : shape.areaProperties.momentOfInertia
     this.invInertia = this.inertia > 0 ? 1 / this.inertia : 0
 
     this.restitution = options?.restitution ?? this._restitution

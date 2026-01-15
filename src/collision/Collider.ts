@@ -7,12 +7,13 @@ import { ExtraMath } from '../extras'
 export interface Collider {
   readonly shape: Collider.Shape
   readonly collidedIds: Set<number>
+  readonly rotation: number
   layer: number
 }
 
 export namespace Collider {
   export abstract class Shape {
-    abstract readonly area: number
+    abstract readonly areaProperties: Geometry.AreaProperties
     readonly vertices: Point[]
     protected transform = new Transform()
     private shouldUpdateVertices = true
@@ -23,10 +24,12 @@ export namespace Collider {
     get position(): PointData {
       return this.transform.position
     }
+    protected get centroid(): Point {
+      return this.areaProperties.centroid
+    }
 
     protected constructor(
       protected readonly _vertices: Point[],
-      protected readonly centroid: Point,
       public readonly aabb: Geometry.AABB = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } },
     ) {
       this.vertices = _vertices.map((v) => v.clone())
@@ -37,11 +40,19 @@ export namespace Collider {
     static circle(x: number, y: number, r: number) {
       return new Circle(x, y, r)
     }
-    static polygon(vertices: number[]) {
-      return new ConvexPolygon(vertices)
+    // static polygon(vertices: number[]) {
+    //   return new ConvexPolygon(vertices)
+    // }
+    static regularPolygon(sides: number, radius: number) {
+      return new ConvexPolygon(Geometry.Polygon.createRegularPolygonVertices(sides, radius))
     }
     static rectangle(x: number, y: number, w: number, h: number) {
-      return Collider.Shape.polygon([x, y, x + w, y, x + w, y + h, x, y + h])
+      return new ConvexPolygon([
+        new Point(x, y),
+        new Point(x + w, y),
+        new Point(x + w, y + h),
+        new Point(x, y + h),
+      ])
     }
 
     setTransform(position: PointData, rotation: number) {
@@ -117,23 +128,20 @@ export namespace Collider {
   }
 
   export class Circle extends Shape {
-    readonly area: number
+    readonly areaProperties: Geometry.AreaProperties
 
     constructor(
       x: number,
       y: number,
       public readonly radius: number,
     ) {
-      super([], new Point(x, y), {
-        min: { x: x - radius, y: y - radius },
-        max: { x: x + radius, y: y + radius },
-      })
+      super([])
 
-      this.area = Geometry.Circle.area(radius)
+      this.areaProperties = Geometry.Circle.areaProperties(x, y, radius)
     }
 
     getProjectionRange(axis: Vector): Range {
-      return Geometry.Circle.getProjectionRange(this.center, this.radius, axis)
+      return Geometry.Circle.projectionRange(this.center, this.radius, axis)
     }
 
     findContactWithCircle(B: Circle, includePoints: boolean): Collision.Contact | undefined {
@@ -187,7 +195,7 @@ export namespace Collider {
       polygon: ConvexPolygon,
       out_contact: Collision.Contact,
     ): boolean {
-      const closestVerIdx = Geometry.ConvexPolygon.getClosestVertexIndexToPoint(
+      const closestVerIdx = Geometry.Polygon.getClosestVertexIndexToPoint(
         this.center,
         polygon.vertices,
       )
@@ -204,7 +212,7 @@ export namespace Collider {
     }
 
     private setContactPointsWithPolygon(B: ConvexPolygon, out_contact: Collision.Contact) {
-      const edge = Geometry.ConvexPolygon.getEdgeAcrossNormal(
+      const edge = Geometry.Polygon.getEdgeAcrossNormal(
         B.vertices,
         out_contact.normal.multiplyScalar(-1),
       )
@@ -218,16 +226,12 @@ export namespace Collider {
   }
 
   export class ConvexPolygon extends Shape {
-    readonly area: number
+    readonly areaProperties: Geometry.AreaProperties
 
-    constructor(vertices: number[]) {
-      const _vertices: Point[] = []
-      for (let i = 0; i < vertices.length; i += 2) {
-        _vertices.push(new Point(vertices[i]!, vertices[i + 1]!))
-      }
-      super(_vertices, Geometry.ConvexPolygon.calculateCentroid(vertices))
+    constructor(vertices: Point[]) {
+      super(vertices)
 
-      this.area = (this.aabb.max.x - this.aabb.min.x) * (this.aabb.max.y - this.aabb.min.y)
+      this.areaProperties = Geometry.Polygon.areaProperties(vertices)
     }
 
     getAxis(index: number, ref_axis: Vector) {
@@ -237,7 +241,7 @@ export namespace Collider {
     }
 
     getProjectionRange(axis: VectorData): Range {
-      return Geometry.ConvexPolygon.getProjectionRange(this.vertices, axis)
+      return Geometry.Polygon.projectionRange(this.vertices, axis)
     }
 
     findContactWithCircle(B: Circle, includePoints: boolean): Collision.Contact | undefined {
@@ -285,8 +289,8 @@ export namespace Collider {
     }
 
     private setContactPointsWithPolygon(B: ConvexPolygon, out_contact: Collision.Contact) {
-      const edgeA = Geometry.ConvexPolygon.getEdgeAcrossNormal(this.vertices, out_contact.normal)
-      const edgeB = Geometry.ConvexPolygon.getEdgeAcrossNormal(
+      const edgeA = Geometry.Polygon.getEdgeAcrossNormal(this.vertices, out_contact.normal)
+      const edgeB = Geometry.Polygon.getEdgeAcrossNormal(
         B.vertices,
         out_contact.normal.multiplyScalar(-1),
       )

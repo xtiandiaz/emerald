@@ -1,6 +1,7 @@
-import { Container, Text, Ticker } from 'pixi.js'
-import type { Disconnectable, SignalBus, World } from '..'
+import { Container, Text, Ticker, Graphics as PixiGraphics } from 'pixi.js'
 import { DebugSignal } from './DebugSignal'
+import type { Disconnectable, SignalBus, World } from '../core'
+import { Collider, Collision } from '../collision'
 
 export namespace Debug {
   export interface GameOptions {
@@ -97,6 +98,38 @@ export namespace Debug {
       if (stats.physicsIterations) string += `\nPhysics iterations: ${stats.physicsIterations}`
 
       this.text.text = string
+    }
+  }
+
+  enum Color {
+    COLLIDER = 0x00ffff,
+  }
+
+  export class Graphics extends PixiGraphics {
+    drawCollider(collider: Collider) {
+      if (collider.shape instanceof Collider.Circle) {
+        const r = collider.shape.radius
+        const center = collider.shape.center
+        this.circle(center.x, center.y, r)
+          .fill({ color: Color.COLLIDER, alpha: 0.5 })
+          .stroke({ color: Color.COLLIDER, width: 2 })
+          .moveTo(center.x, center.y)
+          .lineTo(
+            center.x + r * Math.cos(collider.rotation),
+            center.y + r * Math.sin(collider.rotation),
+          )
+          .stroke({ color: Color.COLLIDER, width: 2 })
+      } else if (collider.shape instanceof Collider.ConvexPolygon) {
+        this.poly(collider.shape.vertices)
+          .fill({ color: Color.COLLIDER, alpha: 0.5 })
+          .stroke({ color: Color.COLLIDER, width: 2 })
+      }
+    }
+
+    drawCollision(collision: Collision) {
+      for (const cp of collision.points) {
+        this.circle(cp.point.x, cp.point.y, 5).stroke({ color: 0xffffff, width: 2 })
+      }
     }
   }
 }

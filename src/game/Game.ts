@@ -43,7 +43,7 @@ export class Game<State extends GameState> extends Application {
 
     await super.init(options)
 
-    this.setUpDebugIfNeeded()
+    this.initDebugIfNeeded()
 
     this.connections.push(...(this.connect?.(this.signalController) ?? []))
 
@@ -63,11 +63,16 @@ export class Game<State extends GameState> extends Application {
   connect?(signalBus: SignalBus): Disconnectable[]
 
   deinit() {
+    this.world.clear()
+
+    this.signalController.clear()
     this.connections.forEach((d) => d.disconnect())
     this.connections.length = 0
 
+    this.renderer.removeAllListeners()
+
+    this.ticker.remove(this.fixedUpdate, this)
     this.ticker.remove(this.update, this)
-    this.renderer.off('resize', this.onResized, this)
 
     this.scene?.deinit()
     this.scene = undefined
@@ -124,7 +129,7 @@ export class Game<State extends GameState> extends Application {
     this.signalController.queue(new ScreenResized(Screen.width, Screen.height))
   }
 
-  private setUpDebugIfNeeded() {
+  private initDebugIfNeeded() {
     if (!this.options?.debug) {
       return
     }

@@ -42,4 +42,9 @@ export class SignalController implements SignalBus {
       this.emit(s)
     }
   }
+
+  clear() {
+    this.signalQueue.length = 0
+    this.connectors.clear()
+  }
 }
