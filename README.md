@@ -10,8 +10,6 @@ A simple game engine rendered with [PixiJS](https://github.com/pixijs/pixijs/) a
 
 ### Collision
 
-- Add option to limit collisions to only AABB intersections if no rotation is needed, at the Collision Sensor System
-
 ### Physics
 
 - Implement ray casts (to early detect contact)

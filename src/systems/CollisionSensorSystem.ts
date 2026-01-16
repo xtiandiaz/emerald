@@ -2,6 +2,7 @@ import { Entity, System, World, type SignalBus } from '../core'
 import { Collision, Collider } from '../collision'
 
 export interface CollisionSensorSystemOptions {
+  usesOnlyAABBIntersectionForCollisionDetection: boolean
   collisionLayerMap?: Collision.LayerMap
 }
 
@@ -11,7 +12,10 @@ export class CollisionSensorSystem extends System {
   constructor(options?: Partial<CollisionSensorSystemOptions>) {
     super()
 
-    this.options = { ...options }
+    this.options = {
+      usesOnlyAABBIntersectionForCollisionDetection: false,
+      ...options,
+    }
   }
 
   fixedUpdate(world: World, signalBus: SignalBus, dT: number): void {
@@ -52,7 +56,9 @@ export class CollisionSensorSystem extends System {
   private isTrigger(A: Collider, B: Collider): boolean {
     return (
       Collision.canCollide(A.layer, B.layer, this.options.collisionLayerMap) &&
-      A.shape.findContact(B.shape, false) != undefined
+      ((this.options.usesOnlyAABBIntersectionForCollisionDetection &&
+        A.shape.hasAABBIntersection(B.shape)) ||
+        A.shape.findContact(B.shape, false) != undefined)
     )
   }
 }
