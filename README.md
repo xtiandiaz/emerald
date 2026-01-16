@@ -14,6 +14,7 @@ A simple game engine rendered with [PixiJS](https://github.com/pixijs/pixijs/) a
 
 ### Physics
 
+- Implement ray casts (to early detect contact)
 - Explore the generation of tile-map collider(s) and how to handle collisions
 
 ### Input

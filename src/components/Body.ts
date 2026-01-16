@@ -1,4 +1,4 @@
-import { Point, Transform, type PointData } from 'pixi.js'
+import { Transform, type PointData } from 'pixi.js'
 import { Vector, Component, clamp01 } from '../core'
 import { Collider } from '../collision'
 import { Physics } from '../physics'
@@ -6,17 +6,18 @@ import { Physics } from '../physics'
 export interface BodyOptions {
   isStatic: boolean
   isKinematic: boolean
-  layer?: number
+  layer: number
 
   position: PointData
   rotation: number
+  scale: number
 
   restitution: number
   friction: Physics.Friction
   angularDrag: number
 }
 
-export class Body extends Component implements Collider, BodyOptions {
+export class Body extends Component implements Collider {
   readonly collidedIds = new Set<number>()
 
   isStatic: boolean
@@ -31,12 +32,6 @@ export class Body extends Component implements Collider, BodyOptions {
   torque = 0
 
   readonly transform = new Transform()
-  get position(): Point {
-    return this.transform.position
-  }
-  get rotation(): number {
-    return this.transform.rotation
-  }
 
   private _restitution = 0.2
   public get restitution(): number {
@@ -91,11 +86,12 @@ export class Body extends Component implements Collider, BodyOptions {
 
     this.transform = new Transform({
       observer: {
-        _onUpdate: (transform) => this.shape.setTransform(transform.position, transform.rotation),
+        _onUpdate: (transform) => this.shape.transform.setFromMatrix(transform.matrix),
       },
     })
     this.transform.position.set(options?.position?.x, options?.position?.y)
     this.transform.rotation = options?.rotation ?? 0
+    this.transform.scale.set(options?.scale ?? 1)
   }
 
   applyForce(force: PointData, position: PointData) {

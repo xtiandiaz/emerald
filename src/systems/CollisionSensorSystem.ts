@@ -25,13 +25,13 @@ export class CollisionSensorSystem extends System {
       A.collidedIds.clear()
 
       entity = world.getEntity(idA)!
-      A.shape.setTransform(entity.position, entity.rotation)
+      A.shape.transform.setFromMatrix(entity.worldTransform)
 
       for (let j = i + 1; j < sensors.length; j++) {
         const [idB, B] = sensors[j]!
 
         entity = world.getEntity(idB)!
-        B.shape.setTransform(entity.position, entity.rotation)
+        B.shape.transform.setFromMatrix(entity.worldTransform)
 
         if (this.isTrigger(A, B)) {
           A.collidedIds.add(idB)

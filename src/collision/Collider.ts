@@ -7,7 +7,6 @@ import { ExtraMath } from '../extras'
 export interface Collider {
   readonly shape: Collider.Shape
   readonly collidedIds: Set<number>
-  readonly rotation: number
   layer: number
 }
 
@@ -15,7 +14,7 @@ export namespace Collider {
   export abstract class Shape {
     abstract readonly areaProperties: Geometry.AreaProperties
     readonly vertices: Point[]
-    protected transform = new Transform()
+    readonly transform: Transform
     private shouldUpdateVertices = true
 
     get center(): Point {
@@ -33,6 +32,11 @@ export namespace Collider {
       public readonly aabb: Geometry.AABB = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } },
     ) {
       this.vertices = _vertices.map((v) => v.clone())
+      this.transform = new Transform({
+        observer: {
+          _onUpdate: (_) => (this.shouldUpdateVertices = true),
+        },
+      })
 
       this.updateVertices()
     }
@@ -53,16 +57,6 @@ export namespace Collider {
         new Point(x + w, y + h),
         new Point(x, y + h),
       ])
-    }
-
-    setTransform(position: PointData, rotation: number) {
-      this.shouldUpdateVertices =
-        this.transform.position.x != position.x ||
-        this.transform.position.y != position.y ||
-        this.transform.rotation != rotation
-
-      this.transform.position.set(position.x, position.y)
-      this.transform.rotation = rotation
     }
 
     updateVerticesIfNeeded() {
@@ -130,14 +124,18 @@ export namespace Collider {
   export class Circle extends Shape {
     readonly areaProperties: Geometry.AreaProperties
 
+    get radius(): number {
+      return this._radius * this.transform.scale.x
+    }
+
     constructor(
       x: number,
       y: number,
-      public readonly radius: number,
+      private readonly _radius: number,
     ) {
       super([])
 
-      this.areaProperties = Geometry.Circle.areaProperties(x, y, radius)
+      this.areaProperties = Geometry.Circle.areaProperties(x, y, _radius)
     }
 
     getProjectionRange(axis: Vector): Range {

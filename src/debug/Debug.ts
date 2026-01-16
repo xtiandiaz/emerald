@@ -45,7 +45,7 @@ export namespace Debug {
     private text = new Text({
       text: 'stats',
       style: {
-        fontSize: 20,
+        fontSize: 16,
         fill: 0xffffff,
       },
     })
@@ -115,8 +115,8 @@ export namespace Debug {
           .stroke({ color: Color.COLLIDER, width: 2 })
           .moveTo(center.x, center.y)
           .lineTo(
-            center.x + r * Math.cos(collider.rotation),
-            center.y + r * Math.sin(collider.rotation),
+            center.x + r * Math.cos(collider.shape.transform.rotation),
+            center.y + r * Math.sin(collider.shape.transform.rotation),
           )
           .stroke({ color: Color.COLLIDER, width: 2 })
       } else if (collider.shape instanceof Collider.ConvexPolygon) {

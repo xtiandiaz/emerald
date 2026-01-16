@@ -143,8 +143,8 @@ export class PhysicsEngine {
   private resetRotationRadii(A: Body, B: Body, point: Point, index: number) {
     const rA = this.rAs[index]!
     const rB = this.rBs[index]!
-    point.subtract(A.position, rA)
-    point.subtract(B.position, rB)
+    point.subtract(A.transform.position, rA)
+    point.subtract(B.transform.position, rB)
     rA.orthogonalize(this.rAOrths[index]!)
     rB.orthogonalize(this.rBOrths[index]!)
   }

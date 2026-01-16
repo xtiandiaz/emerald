@@ -69,8 +69,9 @@ export class PhysicsSystem extends System {
         this.engine.stepBody(body, gravity, PPM, dT)
 
         const entity = world.getEntity(entityId)!
-        entity.position.copyFrom(body.position)
-        entity.rotation = body.rotation
+        entity.position.copyFrom(body.transform.position)
+        entity.rotation = body.transform.rotation
+        entity.scale.set(body.transform.scale.x)
 
         this.debugGraphics?.drawCollider(body)
       }

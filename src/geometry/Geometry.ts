@@ -149,37 +149,6 @@ export namespace Geometry {
       
       For the area, using 'shoelace' formula: https://en.wikipedia.org/wiki/Shoelace_formula
     */
-    export const centroid = (vertices: Point[]) => {
-      const centroid = new Point()
-      let v0: Point, v1: Point
-      let doubleTotalArea = 0
-      let crossProdSignedParalleloArea: number
-
-      for (let i = 0; i < vertices.length; i++) {
-        v0 = vertices[i]!
-        v1 = vertices[(i + 1) % vertices.length]!
-        crossProdSignedParalleloArea = v0.cross(v1)
-        centroid.x += (v0.x + v1.x) * crossProdSignedParalleloArea
-        centroid.y += (v0.y + v1.y) * crossProdSignedParalleloArea
-        doubleTotalArea += crossProdSignedParalleloArea
-      }
-      centroid.divideByScalar(6 * doubleTotalArea * 0.5, centroid)
-
-      return centroid
-    }
-
-    export const projectionRange = (vertices: Point[], axis: VectorData): Range => {
-      const range: Range = { min: Infinity, max: -Infinity }
-      let proj: number
-
-      for (let i = 0; i < vertices.length; i++) {
-        proj = vertices[i]!.dot(axis)
-        range.min = Math.min(range.min, proj)
-        range.max = Math.max(range.max, proj)
-      }
-      return range
-    }
-
     export const areaProperties = (vertices: Point[], density: number = 1): AreaProperties => {
       const centroid = new Point()
       let v0: Point, v1: Point
@@ -198,7 +167,6 @@ export namespace Geometry {
         // Triangular MoI listed in: https://en.wikipedia.org/wiki/List_of_moments_of_inertia
         momentOfInertia += (triangleArea * density * (v0.dot(v0) + v0.dot(v1) + v1.dot(v1))) / 6
       }
-      // According to formula for polygons: https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
       centroid.divideByScalar(6 * area, centroid)
       // Moment of Inertia (I=mr^2) translated to centroid once calculated
       const mass = area * density
@@ -209,6 +177,18 @@ export namespace Geometry {
         momentOfInertia,
         centroid,
       }
+    }
+
+    export const projectionRange = (vertices: Point[], axis: VectorData): Range => {
+      const range: Range = { min: Infinity, max: -Infinity }
+      let proj: number
+
+      for (let i = 0; i < vertices.length; i++) {
+        proj = vertices[i]!.dot(axis)
+        range.min = Math.min(range.min, proj)
+        range.max = Math.max(range.max, proj)
+      }
+      return range
     }
 
     export function getVertexIndexWithMaxProjection(vertices: Point[], axis: VectorData): number {
