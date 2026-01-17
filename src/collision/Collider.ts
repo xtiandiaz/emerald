@@ -41,22 +41,25 @@ export namespace Collider {
       this.updateVertices()
     }
 
-    static circle(x: number, y: number, r: number) {
-      return new Circle(x, y, r)
+    static circle(radius: number, x: number = 0, y: number = 0) {
+      return new Circle(radius, x, y)
     }
-    // static polygon(vertices: number[]) {
-    //   return new ConvexPolygon(vertices)
-    // }
+    static rectangle(width: number, height: number, x?: number, y?: number) {
+      x ??= -width / 2
+      y ??= -height / 2
+
+      return new ConvexPolygon([
+        new Point(x, y),
+        new Point(x + width, y),
+        new Point(x + width, y + height),
+        new Point(x, y + height),
+      ])
+    }
     static regularPolygon(sides: number, radius: number) {
       return new ConvexPolygon(Geometry.Polygon.createRegularPolygonVertices(sides, radius))
     }
-    static rectangle(x: number, y: number, w: number, h: number) {
-      return new ConvexPolygon([
-        new Point(x, y),
-        new Point(x + w, y),
-        new Point(x + w, y + h),
-        new Point(x, y + h),
-      ])
+    static polygon(vertices: Point[]) {
+      return new ConvexPolygon(vertices)
     }
 
     updateVerticesIfNeeded() {
@@ -129,9 +132,9 @@ export namespace Collider {
     }
 
     constructor(
-      x: number,
-      y: number,
       private readonly _radius: number,
+      x: number = 0,
+      y: number = 0,
     ) {
       super([])
 

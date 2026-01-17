@@ -1,14 +1,6 @@
 import { Application, Container, Ticker, type ApplicationOptions } from 'pixi.js'
 import { type FixedTime, type GameState } from '.'
-import {
-  Scene,
-  Screen,
-  SignalController,
-  World,
-  clamp,
-  type SignalBus,
-  type Disconnectable,
-} from '../core'
+import { Scene, Screen, Antenna, World, clamp, type SignalBus, type Disconnectable } from '../core'
 import { ScreenResized } from '../signals'
 import { Debug } from '../debug'
 
@@ -17,10 +9,10 @@ export interface GameOptions extends ApplicationOptions {
 }
 
 export class Game<State extends GameState> extends Application {
-  protected readonly world = new World()
-  protected readonly signalController = new SignalController()
+  protected world!: World
+  protected antenna!: Antenna
   protected scene?: Scene
-  private display = new Container()
+  private display!: Container
   private debugDisplay?: Debug.Display
   private fixedTime: FixedTime = {
     step: 1 / 60,
@@ -34,8 +26,6 @@ export class Game<State extends GameState> extends Application {
     private scenes: Scene[],
   ) {
     super()
-
-    this.stage.addChild(this.world, this.display)
   }
 
   async init(options: Partial<GameOptions>, startScene?: string): Promise<void> {
@@ -43,9 +33,15 @@ export class Game<State extends GameState> extends Application {
 
     await super.init(options)
 
+    this.world = new World()
+    this.display = new Container()
+    this.stage.addChild(this.world, this.display)
+
+    this.antenna = new Antenna()
+
     this.initDebugIfNeeded()
 
-    this.connections.push(...(this.connect?.(this.signalController) ?? []))
+    this.connections.push(...(this.connect?.(this.antenna) ?? []))
 
     this.ticker.add(this.fixedUpdate, this)
     this.ticker.add(this.update, this)
@@ -63,9 +59,10 @@ export class Game<State extends GameState> extends Application {
   connect?(signalBus: SignalBus): Disconnectable[]
 
   deinit() {
-    this.world.clear()
+    this.debugDisplay?.deinit()
 
-    this.signalController.clear()
+    this.stage.removeChildren()
+
     this.connections.forEach((d) => d.disconnect())
     this.connections.length = 0
 
@@ -76,8 +73,6 @@ export class Game<State extends GameState> extends Application {
 
     this.scene?.deinit()
     this.scene = undefined
-
-    this.debugDisplay?.deinit()
   }
 
   async switchToScene(name: string) {
@@ -86,7 +81,7 @@ export class Game<State extends GameState> extends Application {
       return
     }
 
-    await nextScene.init(this.world, this.signalController, this.display)
+    await nextScene.init(this.world, this.antenna, this.display)
 
     if (this.scene) {
       this.scene.deinit()
@@ -103,7 +98,7 @@ export class Game<State extends GameState> extends Application {
 
     while (this.fixedTime.reserve >= this.fixedTime.step) {
       this.scene?.systems.forEach((s) => {
-        s.fixedUpdate?.(this.world, this.signalController, this.fixedTime.step)
+        s.fixedUpdate?.(this.world, this.antenna, this.fixedTime.step)
       })
 
       this.fixedTime.reserve -= this.fixedTime.step
@@ -114,19 +109,19 @@ export class Game<State extends GameState> extends Application {
     if (this.state.isPaused) {
       return
     }
-    this.signalController.emitQueuedSignals()
+    this.antenna.emitQueuedSignals()
 
     this.scene?.systems.forEach((s) => {
-      s.update?.(this.world, this.signalController, ticker.deltaTime)
+      s.update?.(this.world, this.antenna, ticker.deltaTime)
     })
 
-    this.signalController.emitQueuedSignals()
+    this.antenna.emitQueuedSignals()
   }
 
   private onResized() {
     Screen._w = this.screen.width
     Screen._h = this.screen.height
-    this.signalController.queue(new ScreenResized(Screen.width, Screen.height))
+    this.antenna.queue(new ScreenResized(Screen.width, Screen.height))
   }
 
   private initDebugIfNeeded() {
@@ -136,6 +131,6 @@ export class Game<State extends GameState> extends Application {
     this.debugDisplay = new Debug.Display(this.options.debug)
     this.stage.addChild(this.debugDisplay)
 
-    this.debugDisplay.init(this.ticker, this.world, this.signalController)
+    this.debugDisplay.init(this.ticker, this.world, this.antenna)
   }
 }

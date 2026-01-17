@@ -1,6 +1,7 @@
 import { Point, Rectangle, type PointData } from 'pixi.js'
 import { clamp, Vector } from '../core'
 import 'pixi.js/math-extras'
+import { ExtraMath } from '../extras'
 
 declare module 'pixi.js' {
   interface Rectangle {
@@ -18,13 +19,14 @@ Rectangle.prototype.center = function (this): Point {
 
 declare global {
   interface Vector2Math {
-    clamp<T extends PointData = Point>(min: PointData, max: PointData, outVector?: T): T
-    clampScalar<T extends PointData = Point>(min: number, max: number, outVector?: T): T
-    crossScalar<T extends PointData = Vector>(scalar: number, outVector?: T): T
-    divideBy<T extends PointData = Point>(other: T, outVector?: T): T
-    divideByScalar<T extends PointData = Point>(scalar: number, outVector?: T): T
+    clamp<T extends PointData = Point>(min: PointData, max: PointData, out_vector?: T): T
+    clampScalar<T extends PointData = Point>(min: number, max: number, out_vector?: T): T
+    clampMagnitude<T extends PointData = Vector>(maxMagnitude: number, out_vector?: T): T
+    crossScalar<T extends PointData = Vector>(scalar: number, out_vector?: T): T
+    divideBy<T extends PointData = Point>(other: T, out_vector?: T): T
+    divideByScalar<T extends PointData = Point>(scalar: number, out_vector?: T): T
     isNearlyEqual(to: PointData, minDistance?: number): boolean
-    orthogonalize<T extends PointData = Vector>(outVector?: T): T
+    orthogonalize<T extends PointData = Vector>(out_vector?: T): T
   }
 }
 
@@ -54,12 +56,24 @@ Point.prototype.clampScalar = function <T extends PointData = Point>(
   return out_vector
 }
 
+Vector.prototype.clampMagnitude = function <T extends PointData = Vector>(
+  this,
+  maxMagnitude: number,
+  out_vector?: T,
+): T {
+  out_vector ??= new Vector() as PointData as T
+  const magnitude = this.magnitude()
+  this.multiplyScalar(Math.min(magnitude, maxMagnitude) / magnitude, out_vector)
+
+  return out_vector
+}
+
 Vector.prototype.crossScalar = function <T extends PointData = Vector>(
   this,
   scalar: number,
   out_vector?: T,
 ) {
-  out_vector ??= new Point() as PointData as T
+  out_vector ??= new Vector() as PointData as T
   const x = this.x
   out_vector.x = -this.y * scalar
   out_vector.y = x * scalar

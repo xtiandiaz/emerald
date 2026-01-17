@@ -1,5 +1,5 @@
 import { Transform, type PointData } from 'pixi.js'
-import { Vector, Component, clamp01 } from '../core'
+import { Vector, Component, clamp01, type VectorData } from '../core'
 import { Collider } from '../collision'
 import { Physics } from '../physics'
 
@@ -13,7 +13,9 @@ export interface BodyOptions {
   scale: number
 
   restitution: number
-  friction: Physics.Friction
+  friction: Partial<Physics.Friction>
+
+  drag: VectorData
   angularDrag: number
 }
 
@@ -25,39 +27,21 @@ export class Body extends Component implements Collider {
 
   layer: number
 
-  readonly velocity = new Vector()
-  readonly force = new Vector()
-
-  angularVelocity = 0
-  torque = 0
-
   readonly transform = new Transform()
 
-  private _restitution = 0.2
-  public get restitution(): number {
-    return this._restitution
-  }
-  public set restitution(value: number) {
-    this._restitution = clamp01(value)
-  }
+  readonly velocity = new Vector()
+  readonly _drag = new Vector()
 
-  private _friction: Physics.Friction = {
+  angularVelocity = 0
+  _angularDrag = 0
+
+  readonly force = new Vector()
+  torque = 0
+
+  _restitution = 0.2
+  readonly _friction: Physics.Friction = {
     static: 0.5,
     dynamic: 0.3,
-  }
-  public get friction(): Physics.Friction {
-    return this._friction
-  }
-  public set friction(value: Physics.Friction) {
-    this._friction = { static: clamp01(value.static), dynamic: clamp01(value.dynamic) }
-  }
-
-  private _angularDrag = 0
-  get angularDrag(): number {
-    return this._angularDrag
-  }
-  set angularDrag(value: number) {
-    this._angularDrag = Math.pow(clamp01(value), 4)
   }
 
   readonly mass: number
@@ -80,9 +64,11 @@ export class Body extends Component implements Collider {
     this.inertia = this.isStatic ? 0 : shape.areaProperties.momentOfInertia
     this.invInertia = this.inertia > 0 ? 1 / this.inertia : 0
 
-    this.restitution = options?.restitution ?? this._restitution
-    this.friction = options?.friction ?? this._friction
-    this.angularDrag = options?.angularDrag ?? this._angularDrag
+    if (options?.restitution) this.setRestitution(options?.restitution)
+    if (options?.friction) this.setFriction(options.friction)
+
+    if (options?.drag) this.setDrag(options.drag)
+    if (options?.angularDrag) this.setAngularDrag(options.angularDrag)
 
     this.transform = new Transform({
       observer: {
@@ -94,9 +80,31 @@ export class Body extends Component implements Collider {
     this.transform.scale.set(options?.scale ?? 1)
   }
 
-  applyForce(force: PointData, position: PointData) {
+  setRestitution(value: number) {
+    this._restitution = clamp01(value)
+  }
+
+  setFriction(value: Partial<Physics.Friction>) {
+    const adjustValue = (val: number) => clamp01(val)
+    if (value.static) this._friction.static = adjustValue(value.static)
+    if (value.dynamic) this._friction.dynamic = adjustValue(value.dynamic)
+  }
+
+  setDrag(value: Partial<VectorData>) {
+    const adjustValue = (val: number) => Math.pow(clamp01(val), 4)
+    if (value.x) this._drag.x = adjustValue(value.x)
+    if (value.y) this._drag.y = adjustValue(value.y)
+  }
+
+  setAngularDrag(value: number) {
+    this._angularDrag = Math.pow(clamp01(value), 4)
+  }
+
+  applyForce(force: PointData, position?: PointData) {
     // https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/physicstutorials/3angularmotion/Physics%20-%20Angular%20Motion.pdf
     this.force.add(force, this.force)
-    this.torque += this.transform.matrix.applyInverse(position).cross(force)
+    this.torque += this.transform.matrix
+      .applyInverse(position ?? this.transform.position) // ??
+      .cross(force)
   }
 }

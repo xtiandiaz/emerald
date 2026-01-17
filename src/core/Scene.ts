@@ -40,7 +40,7 @@ export abstract class Scene {
     this.systems.forEach((s) => s.deinit?.())
   }
 
-  protected onInput(signal: Input.Signal, world: World): void {
+  protected onInput(signal: Input.Signal<any>, world: World): void {
     this.systems.forEach((s) => s.onInput?.(signal, world))
   }
 }

@@ -2,7 +2,6 @@ import {
   Container,
   EventEmitter,
   FederatedPointerEvent,
-  Point,
   type ContainerChild,
   type ContainerEvents,
   type FederatedEventMap,
@@ -26,60 +25,73 @@ export namespace Input {
   }
   export interface KeyboardControl extends Control {
     keyCodes: string[]
-    eventType: KeyboardEventType
   }
   export interface PointerControl extends Control {
     eventType: PointerEventType
   }
 
   export namespace Control {
-    export const keyboard = (
-      // eventType: KeyboardEventType,
-      ...keyCodes: string[]
-    ): KeyboardControl => ({ source: Source.KEYBOARD, eventType: 'keydown', keyCodes })
+    export const keyboard = (...keyCodes: string[]): KeyboardControl => ({
+      source: Source.KEYBOARD,
+      keyCodes,
+    })
 
     export const pointer = (eventType: PointerEventType): PointerControl => {
       return { source: Source.POINTER, eventType }
     }
   }
 
-  export interface Signal {
-    source: Source
-    action: string
+  export class Signal<E = KeyboardEvent | FederatedPointerEvent> {
+    constructor(
+      public source: Source,
+      public action: string,
+      public event: E,
+    ) {}
   }
-  export interface KeyboardSignal extends Signal {
-    event: KeyboardEvent
+  export class KeyboardSignal extends Signal<KeyboardEvent> {
+    get isKeyDown(): boolean {
+      return this.event.type == 'keydown'
+    }
+    get isRepeated(): boolean {
+      return this.event.repeat
+    }
+
+    constructor(action: string, event: KeyboardEvent) {
+      super(Input.Source.KEYBOARD, action, event)
+    }
   }
-  export interface PointerSignal extends Signal {
-    event: FederatedPointerEvent
+  export class PointerSignal extends Signal<FederatedPointerEvent> {
+    constructor(action: string, event: FederatedPointerEvent) {
+      super(Input.Source.POINTER, action, event)
+    }
   }
 
-  export function connectDocumentEvent<K extends keyof DocumentEventMap>(
-    key: K,
-    connector: (e: DocumentEventMap[K]) => void,
+  export function connectDocumentEvent<T extends keyof DocumentEventMap>(
+    type: T,
+    connector: (e: DocumentEventMap[T]) => void,
   ): Disconnectable {
-    document.addEventListener(key, connector)
+    document.addEventListener(type, connector)
 
     return {
-      disconnect: () => document.removeEventListener(key, connector),
+      disconnect: () => document.removeEventListener(type, connector),
     }
   }
 
   type AnyEvent = { [K: ({} & string) | ({} & symbol)]: any }
-  export function connectContainerEvent<K extends keyof ContainerEvents<ContainerChild>>(
-    key: K,
+  export function connectContainerEvent<T extends keyof ContainerEvents<ContainerChild>>(
+    type: T,
     target: Container,
     connector: (
       ...args: EventEmitter.ArgumentMap<ContainerEvents<ContainerChild> & AnyEvent>[Extract<
-        K,
+        T,
         keyof ContainerEvents<ContainerChild> | keyof AnyEvent
       >]
     ) => void,
   ): Disconnectable {
-    target.on(key, connector)
+    target.on(type, connector)
 
     return {
-      disconnect: () => target.off(key, connector),
+      disconnect: () => target.off(type, connector),
     }
   }
 }

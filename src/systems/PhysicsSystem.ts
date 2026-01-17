@@ -1,6 +1,7 @@
-import { System, World, Vector, type SignalBus } from '../core'
+import { System, World, Vector, type SignalBus, Entity } from '../core'
 import { Physics, PhysicsEngine } from '../physics'
 import { Collision } from '../collision'
+import { Body } from '../components'
 import { DebugSignal } from '../debug/DebugSignal'
 import { Debug } from '../debug'
 
@@ -41,7 +42,13 @@ export class PhysicsSystem extends System {
   }
 
   init(world: World, signalBus: SignalBus): void {
-    this.initDebugIfNeeded(world, signalBus)
+    if (this.options.debug) {
+      this.initDebug(world, signalBus)
+    } else if (this.debugGraphics) {
+      world.removeChild(this.debugGraphics)
+      world.getLayer(World.Layer.DEBUG).detach(this.debugGraphics)
+      this.debugGraphics = undefined
+    }
   }
 
   fixedUpdate(world: World, signalBus: SignalBus, dT: number): void {
@@ -50,8 +57,11 @@ export class PhysicsSystem extends System {
     const bodies = world._bodies
     const separation = new Vector()
     const collisions: Collision[] = []
+    // const vectorOne = new Vector(1, 1)
     let contact: Collision.Contact | undefined
     let collision: Collision | undefined
+    let entity: Entity
+    let body: Body
 
     for (let i = 0; i < bodies.length; i++) {
       bodies[i]![1].collidedIds.clear()
@@ -64,11 +74,11 @@ export class PhysicsSystem extends System {
       collisions.length = 0
 
       for (let i = 0; i < bodies.length; i++) {
-        const [entityId, body] = bodies[i]!
+        body = bodies[i]![1]
 
         this.engine.stepBody(body, gravity, PPM, dT)
 
-        const entity = world.getEntity(entityId)!
+        entity = world.getEntity(bodies[i]![0])!
         entity.position.copyFrom(body.transform.position)
         entity.rotation = body.transform.rotation
         entity.scale.set(body.transform.scale.x)
@@ -111,10 +121,7 @@ export class PhysicsSystem extends System {
     }
   }
 
-  private initDebugIfNeeded(world: World, signalBus: SignalBus) {
-    if (!this.options.debug) {
-      return
-    }
+  private initDebug(world: World, signalBus: SignalBus) {
     this.debugGraphics = new Debug.Graphics()
     world.addChild(this.debugGraphics)
     world.getLayer(World.Layer.DEBUG).attach(this.debugGraphics)

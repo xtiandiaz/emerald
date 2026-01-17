@@ -7,7 +7,7 @@ import type {
   Disconnectable,
 } from '.'
 
-export class SignalController implements SignalBus {
+export class Antenna implements SignalBus {
   private connectors = new Map<string, Set<AnySignalConnector>>()
   private signalQueue: Signal[] = []
 

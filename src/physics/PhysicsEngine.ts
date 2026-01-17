@@ -1,6 +1,6 @@
 import type { Point } from 'pixi.js'
 import { Physics } from './'
-import { Vector } from '../core'
+import { isNearlyEqual, Vector } from '../core'
 import { Body } from '../components'
 import { type Collision } from '../collision'
 import { ExtraMath } from '../extras'
@@ -26,18 +26,19 @@ export class PhysicsEngine {
       return
     }
     if (!body.isKinematic) {
-      // TODO should I multiply forces by inv mass considering that F = m * a ?
       const forces = gravity.vector.multiplyScalar(gravity.value)
-      forces.x += (body.force.x * PPM) / dT
-      forces.y += (body.force.y * PPM) / dT
+      forces.x += body.force.x / dT
+      forces.y += body.force.y / dT
       body.force.set(0, 0)
 
       body.velocity.x += forces.x * dT
+      body.velocity.x *= 1 - body._drag.x
       body.velocity.y += forces.y * dT
+      body.velocity.y *= 1 - body._drag.y
 
       body.angularVelocity += body.torque * dT
+      body.angularVelocity *= 1 - body._angularDrag
       body.torque = 0
-      body.angularVelocity *= 1 - body.angularDrag
     }
 
     body.transform.position.x += body.velocity.x * PPM * dT
@@ -185,10 +186,10 @@ export namespace PhysicsEngine {
 
   export function getResolutionCoefficients(A: Body, B: Body): ResolutionCoefficients {
     return {
-      restitution: Math.max(A.restitution, B.restitution),
+      restitution: Math.max(A._restitution, B._restitution),
       friction: {
-        static: ExtraMath.average(A.friction.static, B.friction.static),
-        dynamic: ExtraMath.average(A.friction.dynamic, B.friction.dynamic),
+        static: ExtraMath.average(A._friction.static, B._friction.static),
+        dynamic: ExtraMath.average(A._friction.dynamic, B._friction.dynamic),
       },
     }
   }

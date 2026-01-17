@@ -3,7 +3,7 @@ import type { Disconnectable } from '../core'
 import { Input } from '.'
 
 export class InputController<K extends string> {
-  private onSignal!: (signal: Input.Signal) => void
+  private onSignal!: (signal: Input.Signal<any>) => void
   // Actions to linked keyboard keys
   private keyCodeToActionsMap = new Map<string, Set<K>>()
   // Actions to linked pointer event types
@@ -14,7 +14,7 @@ export class InputController<K extends string> {
   init(
     inputMap: Record<K, Input.Control>,
     inputPad: Container,
-    onSignal: (signal: Input.Signal) => void,
+    onSignal: (signal: Input.Signal<any>) => void,
   ) {
     this.onSignal = onSignal
 
@@ -36,13 +36,10 @@ export class InputController<K extends string> {
     }
     this.connections.push(
       Input.connectDocumentEvent('keydown', (event: KeyboardEvent) => {
-        this.keyCodeToActionsMap.get(event.code)?.forEach((action) => {
-          this.onSignal({
-            source: Input.Source.KEYBOARD,
-            action,
-            event,
-          } as Input.KeyboardSignal)
-        })
+        this.emitKeyboardSignal(event)
+      }),
+      Input.connectDocumentEvent('keyup', (event: KeyboardEvent) => {
+        this.emitKeyboardSignal(event)
       }),
     )
 
@@ -81,5 +78,11 @@ export class InputController<K extends string> {
 
     this.connections.forEach((c) => c.disconnect())
     this.connections.length = 0
+  }
+
+  private emitKeyboardSignal(event: KeyboardEvent) {
+    this.keyCodeToActionsMap.get(event.code)?.forEach((action) => {
+      this.onSignal(new Input.KeyboardSignal(action, event))
+    })
   }
 }
