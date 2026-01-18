@@ -57,16 +57,9 @@ export class InputController<K extends string> {
     for (const [eventType, actions] of this.pointerEventTypeToActionsMap) {
       this.connections.push(
         Input.connectContainerEvent(eventType, inputPad, (event) => {
-          if (!(event instanceof FederatedPointerEvent)) {
-            return
+          if (event instanceof FederatedPointerEvent) {
+            actions.forEach((action) => this.onSignal(new Input.PointerSignal(action, event)))
           }
-          actions.forEach((action) =>
-            this.onSignal({
-              source: Input.Source.POINTER,
-              action,
-              event,
-            } as Input.PointerSignal),
-          )
         }),
       )
     }

@@ -1,6 +1,7 @@
 import { Point, type PointData } from 'pixi.js'
 import type { Vector, Range, VectorData } from '../core/types'
 import { ExtraMath } from '../extras'
+import '../extensions/pixi.extensions'
 
 export namespace Geometry {
   export class Segment {

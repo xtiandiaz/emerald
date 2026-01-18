@@ -1,6 +1,14 @@
 import { Application, Container, Ticker, type ApplicationOptions } from 'pixi.js'
 import { type FixedTime, type GameState } from '.'
-import { Scene, Screen, Antenna, World, clamp, type SignalBus, type Disconnectable } from '../core'
+import {
+  Scene,
+  Screen,
+  SignalController,
+  World,
+  clamp,
+  type SignalBus,
+  type Disconnectable,
+} from '../core'
 import { ScreenResized } from '../signals'
 import { Debug } from '../debug'
 
@@ -10,16 +18,16 @@ export interface GameOptions extends ApplicationOptions {
 
 export class Game<State extends GameState> extends Application {
   protected world!: World
-  protected antenna!: Antenna
+  protected display!: Container
+  protected signalController!: SignalController
   protected scene?: Scene
-  private display!: Container
-  private debugDisplay?: Debug.Display
+  private connections: Disconnectable[] = []
   private fixedTime: FixedTime = {
     step: 1 / 60,
     reserve: 0,
   }
-  private connections: Disconnectable[] = []
   private options?: Partial<GameOptions>
+  private debugDisplay?: Debug.Display
 
   constructor(
     public state: State,
@@ -37,11 +45,11 @@ export class Game<State extends GameState> extends Application {
     this.display = new Container()
     this.stage.addChild(this.world, this.display)
 
-    this.antenna = new Antenna()
+    this.signalController = new SignalController()
 
     this.initDebugIfNeeded()
 
-    this.connections.push(...(this.connect?.(this.antenna) ?? []))
+    this.connections.push(...(this.connect?.(this.signalController) ?? []))
 
     this.ticker.add(this.fixedUpdate, this)
     this.ticker.add(this.update, this)
@@ -61,6 +69,9 @@ export class Game<State extends GameState> extends Application {
   deinit() {
     this.debugDisplay?.deinit()
 
+    this.scene?.deinit()
+    this.scene = undefined
+
     this.stage.removeChildren()
 
     this.connections.forEach((d) => d.disconnect())
@@ -70,9 +81,6 @@ export class Game<State extends GameState> extends Application {
 
     this.ticker.remove(this.fixedUpdate, this)
     this.ticker.remove(this.update, this)
-
-    this.scene?.deinit()
-    this.scene = undefined
   }
 
   async switchToScene(name: string) {
@@ -81,7 +89,7 @@ export class Game<State extends GameState> extends Application {
       return
     }
 
-    await nextScene.init(this.world, this.antenna, this.display)
+    await nextScene.init(this.world, this.signalController, this.display)
 
     if (this.scene) {
       this.scene.deinit()
@@ -98,7 +106,7 @@ export class Game<State extends GameState> extends Application {
 
     while (this.fixedTime.reserve >= this.fixedTime.step) {
       this.scene?.systems.forEach((s) => {
-        s.fixedUpdate?.(this.world, this.antenna, this.fixedTime.step)
+        s.fixedUpdate?.(this.world, this.signalController, this.fixedTime.step)
       })
 
       this.fixedTime.reserve -= this.fixedTime.step
@@ -109,19 +117,19 @@ export class Game<State extends GameState> extends Application {
     if (this.state.isPaused) {
       return
     }
-    this.antenna.emitQueuedSignals()
+    this.signalController.emitQueuedSignals()
 
     this.scene?.systems.forEach((s) => {
-      s.update?.(this.world, this.antenna, ticker.deltaTime)
+      s.update?.(this.world, this.signalController, ticker.deltaTime)
     })
 
-    this.antenna.emitQueuedSignals()
+    this.signalController.emitQueuedSignals()
   }
 
   private onResized() {
     Screen._w = this.screen.width
     Screen._h = this.screen.height
-    this.antenna.queue(new ScreenResized(Screen.width, Screen.height))
+    this.signalController.queue(new ScreenResized(Screen.width, Screen.height))
   }
 
   private initDebugIfNeeded() {
@@ -131,6 +139,6 @@ export class Game<State extends GameState> extends Application {
     this.debugDisplay = new Debug.Display(this.options.debug)
     this.stage.addChild(this.debugDisplay)
 
-    this.debugDisplay.init(this.ticker, this.world, this.antenna)
+    this.debugDisplay.init(this.ticker, this.world, this.signalController)
   }
 }

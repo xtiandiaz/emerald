@@ -3,7 +3,8 @@ export * from './types'
 export * from './Entity'
 export * from './Component'
 export * from './System'
-export * from './Antenna'
+
+export * from './SignalController'
 export * from './Signal'
 
 export * from './World'

@@ -15,6 +15,10 @@ export namespace Input {
     'pointerdown' | 'pointerup' | 'pointerupoutside' | 'pointermove'
   >
 
+  export interface Action<A extends string> {
+    code: A
+  }
+
   export enum Source {
     KEYBOARD,
     POINTER,

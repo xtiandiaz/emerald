@@ -7,7 +7,7 @@ import type {
   Disconnectable,
 } from '.'
 
-export class Antenna implements SignalBus {
+export class SignalController implements SignalBus {
   private connectors = new Map<string, Set<AnySignalConnector>>()
   private signalQueue: Signal[] = []
 
@@ -41,10 +41,5 @@ export class Antenna implements SignalBus {
     for (const s of signals) {
       this.emit(s)
     }
-  }
-
-  clear() {
-    this.signalQueue.length = 0
-    this.connectors.clear()
   }
 }
