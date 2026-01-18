@@ -13,6 +13,7 @@ import { ScreenResized } from '../signals'
 import { Debug } from '../debug'
 
 export interface GameOptions extends ApplicationOptions {
+  startScene: string
   debug: Debug.GameOptions
 }
 
@@ -36,7 +37,7 @@ export class Game<State extends GameState> extends Application {
     super()
   }
 
-  async init(options: Partial<GameOptions>, startScene?: string): Promise<void> {
+  async init(options: Partial<GameOptions>): Promise<void> {
     this.options = options
 
     await super.init(options)
@@ -59,8 +60,8 @@ export class Game<State extends GameState> extends Application {
 
     this.display.hitArea = this.screen
 
-    if (startScene) {
-      await this.switchToScene(startScene)
+    if (options.startScene) {
+      await this.switchToScene(options.startScene)
     }
   }
 
@@ -83,8 +84,8 @@ export class Game<State extends GameState> extends Application {
     this.ticker.remove(this.update, this)
   }
 
-  async switchToScene(name: string) {
-    const nextScene = this.scenes.find((s) => s.name == name)
+  async switchToScene(label: string) {
+    const nextScene = this.scenes.find((s) => s.label == label)
     if (!nextScene) {
       return
     }

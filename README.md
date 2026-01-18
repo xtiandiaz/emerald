@@ -17,9 +17,55 @@ But how wasn't the ECS adopted categorically then? Well,
    2. _skinning_ them, by adding `Sprite`s, `Graphics` or child-containers to display your entities however desired.
 2. `Component`s are ideally just a bunch of data. Ideally. But because they also extend a base class (not tied to anything else, though) they might containt some logic too. It's all up to you. However, their inter-communication is restricted and limited to `System`s with full access to relate them.
 
+## Getting Started
+
+1. Create one or more scenes wrapping chunks of your game:
+
+```typescript
+class Intro extends Scene {
+  systems: System[] = [
+    // instantiate custom or bundled Systems (more info. below)
+  ]
+
+  constructor() {
+    // Set its unique name to switch to it in the game
+    super('intro')
+  }
+
+  build(world: World) {
+    // Add Entitys and Components to the World
+  }
+}
+```
+
+2. Create a game instance with an array of scenes:
+
+```typescript
+const game = new Game({ isPaused: false }, [new Scene1()])
+```
+
+3. Initialize the game asynchronously (just like a Pixi's Application), by passing a `canvas`, `width` and `height`, `antialiasing`, and other [options](https://pixijs.download/release/docs/app.ApplicationOptions.html) available, as well as the label of your `startScene`:
+
+```typescript
+await game.init({
+  canvas: document.querySelector<HTMLCanvasElement>('#game')!,
+  width: 1280,
+  height: 720,
+  startScene: 'intro',
+})
+```
+
+4. Switch to any other scene by its label during runtime:
+
+```typescript
+game.switchToScene('combat')
+```
+
+The `Game` will de-init the previous scene (if any) and init. the next.
+
 ## Systems
 
-This is the condensed definition of the base `System` class:
+Systems read, update, create and command to destroy entities and components at the World. Here's the condensed definition of the base `System` class:
 
 ```typescript
 export abstract class System {
@@ -247,6 +293,8 @@ More possible features to come whenever there's the time and use cases for them 
 I'm also open for anyone to contribute if you see value in this engine.
 
 ### General
+
+- Pack and distribute as NPM if desired
 
 ### Collision
 
