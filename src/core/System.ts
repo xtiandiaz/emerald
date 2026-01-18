@@ -1,7 +1,7 @@
 import type { SignalBus, Disconnectable, World } from './'
 import { Input } from '../input'
 
-export class System {
+export abstract class System {
   protected connections: Disconnectable[] = []
 
   init?(world: World, signalBus: SignalBus): void

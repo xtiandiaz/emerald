@@ -2,27 +2,22 @@ import { Assets, Container } from 'pixi.js'
 import { World, System, type Disconnectable, type SignalBus } from '../core'
 import { Input, InputController } from '../input'
 
-export interface SceneOptions {}
-
 export abstract class Scene {
   abstract readonly systems: System[]
   abstract readonly inputMap?: Record<string, Input.Control>
   protected input = new InputController<keyof typeof this.inputMap>()
   protected connections: Disconnectable[] = []
 
-  constructor(
-    public readonly name: string,
-    protected options?: Partial<SceneOptions>,
-  ) {}
+  constructor(public readonly name: string) {}
 
   async load?(): Promise<void>
 
-  build?(world: World): void
+  abstract build(world: World): void
 
   async init(world: World, signalBus: SignalBus, display: Container): Promise<void> {
     await this.load?.()
 
-    this.build?.(world)
+    this.build(world)
 
     this.systems.forEach((s) => s.init?.(world, signalBus))
 
@@ -33,8 +28,6 @@ export abstract class Scene {
 
   deinit(): void {
     this.input.deinit()
-
-    Assets.reset()
 
     this.connections.forEach((c) => c.disconnect())
     this.systems.forEach((s) => s.deinit?.())

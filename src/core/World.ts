@@ -60,7 +60,7 @@ export class World extends Container {
     return entity
   }
 
-  createSimpleEntity<U extends Component, V extends U[]>(...components: V): SimpleEntity {
+  createSimpleEntity<T extends Component, U extends T[]>(...components: U): SimpleEntity {
     const entity = this.createEntity(SimpleEntity)
     components.forEach((c) => entity.addComponent(c))
     return entity
@@ -80,25 +80,6 @@ export class World extends Container {
 
   getEntitiesByTag(tag: string): Entity[] {
     return [...(this.taggedIds.get(tag) ?? [])].map((id) => this.idToEntityMap.get(id)!)
-  }
-
-  removeEntity(id: number) {
-    const entity = this.idToEntityMap.get(id)
-    if (!entity) {
-      return
-    }
-    this.removeChild(entity)
-    this.idToEntityMap.delete(id)
-    this.entityIdToComponentsMap.delete(id)
-
-    this.deleteBodyEntry(id)
-    this.deleteCollisionSensorEntry(id)
-
-    const tag = this.tagMap.get(id)
-    if (tag) {
-      this.taggedIds.get(tag)!.delete(id)
-      this.tagMap.delete(id)
-    }
   }
 
   tag(entityId: number, tag: string): Entity | undefined {
@@ -130,6 +111,16 @@ export class World extends Container {
 
   getComponent<T extends Component>(entityId: number, type: SomeComponent<T>): T | undefined {
     return this.entityIdToComponentsMap.get(entityId)?.get(type.name) as T
+  }
+
+  getComponents<T extends Component>(type: SomeComponent<T>): T[] {
+    const components: T[] = []
+    this.entityIdToComponentsMap.forEach((cMap) => {
+      if (cMap.has(type.name)) {
+        components.push(cMap.get(type.name)! as T)
+      }
+    })
+    return components
   }
 
   addComponent<T extends Component, U extends T[]>(
@@ -171,25 +162,23 @@ export class World extends Container {
     return c2typeMap.delete(type.name)
   }
 
-  getEntityComponents<T extends Component>(type: SomeComponent<T>): EntityComponent<T>[] {
-    const ecs: EntityComponent<T>[] = []
-    for (const [eId, cs] of this.entityIdToComponentsMap.entries()) {
-      const c = cs.get(type.name)
-      if (c) {
-        ecs.push([eId, c as T])
-      }
+  removeEntity(id: number) {
+    const entity = this.idToEntityMap.get(id)
+    if (!entity) {
+      return
     }
-    return ecs
-  }
+    this.removeChild(entity)
+    this.idToEntityMap.delete(id)
+    this.entityIdToComponentsMap.delete(id)
 
-  getComponents<T extends Component>(type: SomeComponent<T>): T[] {
-    const components: T[] = []
-    this.entityIdToComponentsMap.forEach((cMap) => {
-      if (cMap.has(type.name)) {
-        components.push(cMap.get(type.name)! as T)
-      }
-    })
-    return components
+    this.deleteBodyEntry(id)
+    this.deleteCollisionSensorEntry(id)
+
+    const tag = this.tagMap.get(id)
+    if (tag) {
+      this.taggedIds.get(tag)!.delete(id)
+      this.tagMap.delete(id)
+    }
   }
 
   clear() {

@@ -8,9 +8,9 @@ export interface BodyOptions {
   isKinematic: boolean
   layer: number
 
-  position: PointData
-  rotation: number
-  scale: number
+  startPosition: PointData
+  startRotation: number
+  startScale: number
 
   restitution: number
   friction: Partial<Physics.Friction>
@@ -75,9 +75,9 @@ export class Body extends Component implements Collider {
         _onUpdate: (transform) => this.shape.transform.setFromMatrix(transform.matrix),
       },
     })
-    this.transform.position.set(options?.position?.x, options?.position?.y)
-    this.transform.rotation = options?.rotation ?? 0
-    this.transform.scale.set(options?.scale ?? 1)
+    this.transform.position.set(options?.startPosition?.x, options?.startPosition?.y)
+    this.transform.rotation = options?.startRotation ?? 0
+    this.transform.scale.set(options?.startScale ?? 1)
   }
 
   setRestitution(value: number) {
