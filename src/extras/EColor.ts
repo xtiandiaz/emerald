@@ -1,4 +1,4 @@
-export namespace ExtraColor {
+export namespace EColor {
   export const componenHexString = (component: number): string => {
     const hex = Math.round(component * 255).toString(16)
     return hex.length == 1 ? '0' + hex : hex

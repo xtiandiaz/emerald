@@ -4,7 +4,6 @@ import {
   Scene,
   Screen,
   SignalController,
-  World,
   clamp,
   type SignalBus,
   type Disconnectable,
@@ -13,12 +12,10 @@ import { ScreenResized } from '../signals'
 import { Debug } from '../debug'
 
 export interface GameOptions extends ApplicationOptions {
-  startScene: string
   debug: Debug.GameOptions
 }
 
 export class Game<State extends GameState> extends Application {
-  protected world!: World
   protected display!: Container
   protected signalController!: SignalController
   protected scene?: Scene
@@ -37,38 +34,38 @@ export class Game<State extends GameState> extends Application {
     super()
   }
 
+  connect?(signalBus: SignalBus, state: State): Disconnectable[]
+
   async init(options: Partial<GameOptions>): Promise<void> {
     this.options = options
 
     await super.init(options)
 
-    this.world = new World()
     this.display = new Container()
-    this.stage.addChild(this.world, this.display)
+    this.stage.addChild(this.display)
 
     this.signalController = new SignalController()
 
     this.initDebugIfNeeded()
 
-    this.connections.push(...(this.connect?.(this.signalController) ?? []))
+    this.connections.push(...(this.connect?.(this.signalController, this.state) ?? []))
 
     this.ticker.add(this.fixedUpdate, this)
     this.ticker.add(this.update, this)
 
     this.renderer.on('resize', this.onResized, this)
-    this.onResized()
+    this.onResized(this.screen.width, this.screen.height)
 
     this.display.hitArea = this.screen
-
-    if (options.startScene) {
-      await this.switchToScene(options.startScene)
-    }
   }
-
-  connect?(signalBus: SignalBus): Disconnectable[]
 
   deinit() {
     this.debugDisplay?.deinit()
+
+    this.ticker.remove(this.fixedUpdate, this)
+    this.ticker.remove(this.update, this)
+
+    this.renderer.removeAllListeners()
 
     this.scene?.deinit()
     this.scene = undefined
@@ -77,26 +74,23 @@ export class Game<State extends GameState> extends Application {
 
     this.connections.forEach((d) => d.disconnect())
     this.connections.length = 0
-
-    this.renderer.removeAllListeners()
-
-    this.ticker.remove(this.fixedUpdate, this)
-    this.ticker.remove(this.update, this)
   }
 
-  async switchToScene(label: string) {
+  async play(label: string) {
     const nextScene = this.scenes.find((s) => s.label == label)
     if (!nextScene) {
       return
     }
 
-    await nextScene.init(this.world, this.signalController, this.display)
-
     if (this.scene) {
+      this.stage.removeChild(this.scene)
       this.scene.deinit()
     }
 
+    await nextScene.init(this.signalController, this.display)
+
     this.scene = nextScene
+    this.stage.addChild(this.scene)
   }
 
   private fixedUpdate(ticker: Ticker) {
@@ -105,10 +99,8 @@ export class Game<State extends GameState> extends Application {
     }
     this.fixedTime.reserve = clamp(this.fixedTime.reserve + ticker.deltaMS, 0, 0.1)
 
-    while (this.fixedTime.reserve >= this.fixedTime.step) {
-      this.scene?.systems.forEach((s) => {
-        s.fixedUpdate?.(this.world, this.signalController, this.fixedTime.step)
-      })
+    while (this.scene && this.fixedTime.reserve >= this.fixedTime.step) {
+      this.scene.fixedUpdate(this.signalController, this.fixedTime.step)
 
       this.fixedTime.reserve -= this.fixedTime.step
     }
@@ -120,17 +112,16 @@ export class Game<State extends GameState> extends Application {
     }
     this.signalController.emitQueuedSignals()
 
-    this.scene?.systems.forEach((s) => {
-      s.update?.(this.world, this.signalController, ticker.deltaTime)
-    })
-
-    this.signalController.emitQueuedSignals()
+    this.scene?.update(this.signalController, ticker.deltaTime)
   }
 
-  private onResized() {
-    Screen._w = this.screen.width
-    Screen._h = this.screen.height
-    this.signalController.queue(new ScreenResized(Screen.width, Screen.height))
+  private onResized(width: number, height: number) {
+    Screen._w = width
+    Screen._h = height
+    this.display.width = width
+    this.display.height = height
+
+    this.signalController.queue(new ScreenResized(width, height))
   }
 
   private initDebugIfNeeded() {
@@ -140,6 +131,6 @@ export class Game<State extends GameState> extends Application {
     this.debugDisplay = new Debug.Display(this.options.debug)
     this.stage.addChild(this.debugDisplay)
 
-    this.debugDisplay.init(this.ticker, this.world, this.signalController)
+    // this.debugDisplay.init(this.ticker, this.signalController)
   }
 }

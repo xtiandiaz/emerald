@@ -2,7 +2,7 @@ import { Point, Transform, type PointData } from 'pixi.js'
 import { Vector, type Range, type VectorData } from '../core'
 import { Geometry } from '../geometry'
 import { Collision } from '../collision'
-import { ExtraMath } from '../extras'
+import { EMath } from '../extras'
 
 export interface Collider {
   readonly shape: Collider.Shape
@@ -11,17 +11,41 @@ export interface Collider {
 }
 
 export namespace Collider {
+  export const circle = (radius: number, x: number = 0, y: number = 0) => {
+    return new Circle(radius, x, y)
+  }
+
+  export const rectangle = (width: number, height: number, x?: number, y?: number) => {
+    x ??= -width / 2
+    y ??= -height / 2
+
+    return new ConvexPolygon([
+      new Point(x, y),
+      new Point(x + width, y),
+      new Point(x + width, y + height),
+      new Point(x, y + height),
+    ])
+  }
+
+  export const regularPolygon = (radius: number, sides: number) => {
+    return new ConvexPolygon(Geometry.Polygon.createRegularPolygonVertices(radius, sides))
+  }
+
+  export const polygon = (vertices: Point[]) => {
+    return new ConvexPolygon(vertices)
+  }
+
   export abstract class Shape {
     abstract readonly areaProperties: Geometry.AreaProperties
     readonly vertices: Point[]
-    readonly transform: Transform
+    readonly _transform: Transform
     private shouldUpdateVertices = true
 
     get center(): Point {
-      return this.transform.position.add(this.centroid)
+      return this._transform.position.add(this.centroid)
     }
     get position(): PointData {
-      return this.transform.position
+      return this._transform.position
     }
     protected get centroid(): Point {
       return this.areaProperties.centroid
@@ -32,13 +56,13 @@ export namespace Collider {
       public readonly aabb: Geometry.AABB = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } },
     ) {
       this.vertices = _vertices.map((v) => v.clone())
-      this.transform = new Transform({
+      this._transform = new Transform({
         observer: {
-          _onUpdate: (_) => (this.shouldUpdateVertices = true),
+          _onUpdate: (_) => {
+            this.shouldUpdateVertices = true
+          },
         },
       })
-
-      this.updateVertices()
     }
 
     static circle(radius: number, x: number = 0, y: number = 0) {
@@ -55,8 +79,8 @@ export namespace Collider {
         new Point(x, y + height),
       ])
     }
-    static regularPolygon(sides: number, radius: number) {
-      return new ConvexPolygon(Geometry.Polygon.createRegularPolygonVertices(sides, radius))
+    static regularPolygon(radius: number, sides: number) {
+      return new ConvexPolygon(Geometry.Polygon.createRegularPolygonVertices(radius, sides))
     }
     static polygon(vertices: Point[]) {
       return new ConvexPolygon(vertices)
@@ -110,7 +134,7 @@ export namespace Collider {
 
       for (let i = 0; i < this._vertices.length; i++) {
         const v = this.vertices[i]!
-        this.transform.matrix.apply(this._vertices[i]!, v)
+        this._transform.matrix.apply(this._vertices[i]!, v)
 
         minX = Math.min(minX, v.x)
         maxX = Math.max(maxX, v.x)
@@ -128,7 +152,7 @@ export namespace Collider {
     readonly areaProperties: Geometry.AreaProperties
 
     get radius(): number {
-      return this._radius * this.transform.scale.x
+      return this._radius * this._transform.scale.x
     }
 
     constructor(
@@ -327,7 +351,7 @@ export namespace Collider {
       }
 
       out_contact.points = cps
-      out_contact.depth = ExtraMath.average(...cps.map((cp) => cp.depth))
+      out_contact.depth = EMath.average(...cps.map((cp) => cp.depth))
     }
   }
 }

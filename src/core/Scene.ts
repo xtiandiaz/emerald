@@ -1,39 +1,71 @@
-import { Container } from 'pixi.js'
-import { World, System, type Disconnectable, type SignalBus } from '../core'
-import { Input, InputController } from '../input'
+import { ContainerChild, ContainerEvents, Sprite } from 'pixi.js'
+import { ComponentIndex, Stage, System, type Disconnectable, type SignalBus } from '../core'
+import { Input } from '../input'
+import { ScreenResized } from '../signals'
 
-export abstract class Scene {
-  abstract readonly systems: System[]
-  abstract readonly inputMap?: Record<string, Input.Control>
-  protected input = new InputController<keyof typeof this.inputMap>()
+export class Scene<CI extends ComponentIndex> extends Stage<CI> implements Input.Provider {
   protected connections: Disconnectable[] = []
+  private inputPad = new Sprite()
 
-  constructor(public readonly label: string) {}
+  constructor(
+    public readonly label: string,
+    protected readonly systems: System<CI>[],
+  ) {
+    super()
+
+    this.inputPad.eventMode = 'static'
+    this.getLayer(Stage.Layer.UI).attach(this.inputPad)
+    this.addChild(this.inputPad)
+  }
 
   async load?(): Promise<void>
 
-  abstract build(world: World): void
+  build?(stage: Stage<CI>): void
 
-  async init(world: World, signalBus: SignalBus, display: Container): Promise<void> {
+  connect?(input: Input.Provider, signals: SignalBus): Disconnectable[]
+
+  async init(signalBus: SignalBus): Promise<void> {
     await this.load?.()
 
-    this.build(world)
+    this.build?.(this)
 
-    this.systems.forEach((s) => s.init?.(world, signalBus))
+    this.connect?.(this, signalBus)
 
-    if (this.inputMap) {
-      this.input.init(this.inputMap, display, (signal) => this.onInput?.(signal, world))
-    }
+    this.systems.forEach((s) => this.connections.push(...(s.init?.(this, signalBus, this) ?? [])))
+
+    signalBus.connect(ScreenResized, (s) => {
+      this.inputPad.width = s.width
+      this.inputPad.height = s.height
+    })
   }
 
   deinit(): void {
-    this.input.deinit()
-
     this.connections.forEach((c) => c.disconnect())
-    this.systems.forEach((s) => s.deinit?.())
   }
 
-  protected onInput(signal: Input.Signal<any>, world: World): void {
-    this.systems.forEach((s) => s.onInput?.(signal, world))
+  fixedUpdate(signalBus: SignalBus, dT: number) {
+    this.systems.forEach((s) => {
+      s.fixedUpdate?.(this, signalBus, dT)
+    })
+  }
+
+  update(signalBus: SignalBus, dT: number) {
+    this.systems.forEach((s) => {
+      s.update?.(this, signalBus, dT)
+    })
+  }
+
+  connectDocumentEvent<T extends keyof DocumentEventMap>(
+    type: T,
+    connector: Input.DocumentEventConnector<T>,
+  ): Disconnectable {
+    return Input.connectDocumentEvent(type, connector)
+  }
+
+  connectContainerEvent<T extends keyof ContainerEvents<ContainerChild>>(
+    type: T,
+    connector: Input.ContainerEventConnector<T>,
+  ): Disconnectable {
+    return Input.connectContainerEvent(type, this.inputPad, connector)
   }
 }

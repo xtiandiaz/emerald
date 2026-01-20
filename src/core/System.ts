@@ -1,18 +1,9 @@
-import type { SignalBus, Disconnectable, World } from './'
+import type { SignalBus, Disconnectable, Stage, ComponentIndex } from './'
 import { Input } from '../input'
 
-export abstract class System {
-  protected connections: Disconnectable[] = []
+export class System<CI extends ComponentIndex> {
+  init?(stage: Stage<CI>, signals: SignalBus, input: Input.Provider): Disconnectable[]
 
-  init?(world: World, signalBus: SignalBus): void
-
-  deinit() {
-    this.connections.forEach((d) => d.disconnect())
-    this.connections.length = 0
-  }
-
-  fixedUpdate?(world: World, signalBus: SignalBus, dT: number): void
-  update?(world: World, signalBus: SignalBus, dT: number): void
-
-  onInput?(signal: Input.Signal<any>, world: World): void
+  fixedUpdate?(stage: Stage<CI>, signals: SignalBus, dT: number): void
+  update?(stage: Stage<CI>, signals: SignalBus, dT: number): void
 }

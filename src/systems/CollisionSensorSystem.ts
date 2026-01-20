@@ -1,4 +1,4 @@
-import { Entity, System, World, type SignalBus } from '../core'
+import { Entity, Stage, System, type SignalBus } from '../core'
 import { Collision, Collider } from '../collision'
 
 export interface CollisionSensorSystemOptions {
@@ -18,9 +18,9 @@ export class CollisionSensorSystem extends System {
     }
   }
 
-  fixedUpdate(world: World, signalBus: SignalBus, dT: number): void {
-    const sensors = world._collisionSensors
-    const bodies = world._bodies
+  fixedUpdate(stage: Stage, signalBus: SignalBus, dT: number): void {
+    const sensors = stage._collisionSensors
+    const bodies = stage._bodies
     let entity: Entity
 
     for (let i = 0; i < sensors.length; i++) {
@@ -28,14 +28,14 @@ export class CollisionSensorSystem extends System {
 
       A.collidedIds.clear()
 
-      entity = world.getEntity(idA)!
-      A.shape.transform.setFromMatrix(entity.worldTransform)
+      entity = stage.getEntity(idA)!
+      A._updateTransform(entity.position, entity.rotation, entity.scale.x)
 
       for (let j = i + 1; j < sensors.length; j++) {
         const [idB, B] = sensors[j]!
 
-        entity = world.getEntity(idB)!
-        B.shape.transform.setFromMatrix(entity.worldTransform)
+        entity = stage.getEntity(idB)!
+        B._updateTransform(entity.position, entity.rotation, entity.scale.x)
 
         if (this.isTrigger(A, B)) {
           A.collidedIds.add(idB)

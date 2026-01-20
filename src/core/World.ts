@@ -6,11 +6,11 @@ import {
   type SomeComponent,
   type SomeEntity,
 } from './'
-import { Body, CollisionSensor } from '../components'
+import { RigidBody, CollisionSensor } from '../components'
 import { Container, RenderLayer } from 'pixi.js'
 
 export class World extends Container {
-  readonly _bodies: EntityComponent<Body>[] = []
+  readonly _bodies: EntityComponent<RigidBody>[] = []
   readonly _collisionSensors: EntityComponent<CollisionSensor>[] = []
 
   private nextEntityId = 1
@@ -137,7 +137,7 @@ export class World extends Container {
 
       if (c instanceof CollisionSensor) {
         this._collisionSensors.push([entityId, c])
-      } else if (c instanceof Body) {
+      } else if (c instanceof RigidBody) {
         this._bodies.push([entityId, c])
       }
     }
@@ -155,7 +155,7 @@ export class World extends Container {
     const c = c2typeMap.get(type.name)
     if (c instanceof CollisionSensor) {
       this.deleteCollisionSensorEntry(entityId)
-    } else if (c instanceof Body) {
+    } else if (c instanceof RigidBody) {
       this.deleteBodyEntry(entityId)
     }
 

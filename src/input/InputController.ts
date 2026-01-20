@@ -11,7 +11,7 @@ export class InputController<K extends string> {
   private connections: Disconnectable[] = []
   private pad?: Container
 
-  init(
+  constructor(
     inputMap: Record<K, Input.Control>,
     inputPad: Container,
     onSignal: (signal: Input.Signal<any>) => void,

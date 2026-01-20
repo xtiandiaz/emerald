@@ -1,13 +1,13 @@
 export * from './types'
 
 export * from './Entity'
-export * from './Component'
 export * from './System'
 
 export * from './SignalController'
 export * from './Signal'
 
 export * from './World'
+export * from './Stage'
 export * from './Scene'
 
 export * from './Screen'

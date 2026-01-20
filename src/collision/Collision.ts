@@ -1,11 +1,11 @@
 import { Point } from 'pixi.js'
 import { Collider } from '.'
 import { Geometry } from '../geometry'
-import { Body } from '../components'
+import { RigidBody } from '../components'
 
 export interface Collision extends Collision.Contact {
-  A: Body
-  B: Body
+  A: RigidBody
+  B: RigidBody
   points: Collision.ContactPoint[]
 }
 export namespace Collision {

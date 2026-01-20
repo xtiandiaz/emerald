@@ -115,8 +115,8 @@ export namespace Debug {
           .stroke({ color: Color.COLLIDER, width: 2 })
           .moveTo(center.x, center.y)
           .lineTo(
-            center.x + r * Math.cos(collider.shape.transform.rotation),
-            center.y + r * Math.sin(collider.shape.transform.rotation),
+            center.x + r * Math.cos(collider.shape._transform.rotation),
+            center.y + r * Math.sin(collider.shape._transform.rotation),
           )
           .stroke({ color: Color.COLLIDER, width: 2 })
       } else if (collider.shape instanceof Collider.ConvexPolygon) {

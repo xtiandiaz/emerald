@@ -1,15 +1,23 @@
-import type {
+import {
   Signal,
   SignalBus,
   SignalConnector,
   AnySignalConnector,
   SomeSignal,
   Disconnectable,
+  _AnySignalConnector,
+  _Signal,
+  _SignalConnector,
 } from '.'
 
 export class SignalController implements SignalBus {
   private connectors = new Map<string, Set<AnySignalConnector>>()
+  private _connectors = new Map<string, Set<_AnySignalConnector>>()
   private signalQueue: Signal[] = []
+
+  _emit<D>(code: string, data: D): void {
+    this._connectors.get(code)?.forEach((c) => c(new _Signal(code, data)))
+  }
 
   emit<T extends Signal>(signal: T): void {
     this.connectors.get(signal.name)?.forEach((c) => c(signal))
@@ -27,6 +35,17 @@ export class SignalController implements SignalBus {
 
     return {
       disconnect: () => this.disconnect(type, connector),
+    }
+  }
+
+  _connect<D>(code: string, connector: _SignalConnector<D>): Disconnectable {
+    if (!this._connectors.has(code)) {
+      this._connectors.set(code, new Set())
+    }
+    this._connectors.get(code)!.add(connector as _AnySignalConnector)
+
+    return {
+      disconnect: () => {} /* this.disconnect(code, connector) */,
     }
   }
 

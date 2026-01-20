@@ -1,16 +1,19 @@
-import { Transform, type PointData } from 'pixi.js'
+import { Transform, Point, type PointData } from 'pixi.js'
 import { Vector, Component, clamp01, type VectorData } from '../core'
 import { Collider } from '../collision'
 import { Physics } from '../physics'
 
-export interface BodyOptions {
+export interface RigidBodyOptions {
   isStatic: boolean
   isKinematic: boolean
   layer: number
 
-  startPosition: PointData
-  startRotation: number
-  startScale: number
+  initialPosition: PointData
+  initialRotation: number
+  initialScale: number
+
+  initialVelocity: VectorData
+  initialAngularVelocity: number
 
   restitution: number
   friction: Partial<Physics.Friction>
@@ -19,7 +22,7 @@ export interface BodyOptions {
   angularDrag: number
 }
 
-export class Body extends Component implements Collider {
+export class RigidBody implements Component, Collider {
   readonly collidedIds = new Set<number>()
 
   isStatic: boolean
@@ -27,15 +30,13 @@ export class Body extends Component implements Collider {
 
   layer: number
 
-  readonly transform = new Transform()
-
   readonly velocity = new Vector()
   readonly _drag = new Vector()
 
   angularVelocity = 0
   _angularDrag = 0
 
-  readonly force = new Vector()
+  readonly _force = new Vector()
   torque = 0
 
   _restitution = 0.2
@@ -49,11 +50,25 @@ export class Body extends Component implements Collider {
   readonly inertia: number
   readonly invInertia: number
 
+  readonly _transform: Transform
+  get position(): Point {
+    return this._transform.position
+  }
+  get rotation(): number {
+    return this._transform.rotation
+  }
+  set rotation(value: number) {
+    this._transform.rotation = value
+  }
+  get scale(): number {
+    return this._transform.scale.x
+  }
+
   constructor(
     public readonly shape: Collider.Shape,
-    options?: Partial<BodyOptions>,
+    options?: Partial<RigidBodyOptions>,
   ) {
-    super()
+    this._transform = shape._transform
 
     this.isStatic = options?.isStatic ?? false
     this.isKinematic = options?.isKinematic ?? false
@@ -70,14 +85,12 @@ export class Body extends Component implements Collider {
     if (options?.drag) this.setDrag(options.drag)
     if (options?.angularDrag) this.setAngularDrag(options.angularDrag)
 
-    this.transform = new Transform({
-      observer: {
-        _onUpdate: (transform) => this.shape.transform.setFromMatrix(transform.matrix),
-      },
-    })
-    this.transform.position.set(options?.startPosition?.x, options?.startPosition?.y)
-    this.transform.rotation = options?.startRotation ?? 0
-    this.transform.scale.set(options?.startScale ?? 1)
+    if (options?.initialPosition) this._transform.position.copyFrom(options.initialPosition)
+    if (options?.initialRotation) this._transform.rotation = options.initialRotation
+    if (options?.initialScale) this._transform.scale.x = options.initialScale
+
+    if (options?.initialVelocity) this.velocity.copyFrom(options.initialVelocity)
+    if (options?.initialAngularVelocity) this.angularVelocity = options.initialAngularVelocity
   }
 
   setRestitution(value: number) {
@@ -102,9 +115,9 @@ export class Body extends Component implements Collider {
 
   applyForce(force: PointData, position?: PointData) {
     // https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/physicstutorials/3angularmotion/Physics%20-%20Angular%20Motion.pdf
-    this.force.add(force, this.force)
-    this.torque += this.transform.matrix
-      .applyInverse(position ?? this.transform.position) // ??
+    this._force.add(force, this._force)
+    this.torque += this._transform.matrix
+      .applyInverse(position ?? this._transform.position) // ??
       .cross(force)
   }
 }

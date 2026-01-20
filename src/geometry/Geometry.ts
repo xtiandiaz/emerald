@@ -1,7 +1,7 @@
 import { Point, type PointData } from 'pixi.js'
 import type { Vector, Range, VectorData } from '../core/types'
-import { ExtraMath } from '../extras'
-import '../extensions/pixi.extensions'
+import { EMath } from '../extras'
+import '../augmentations/pixi.augmentations'
 
 export namespace Geometry {
   export class Segment {
@@ -236,9 +236,9 @@ export namespace Geometry {
       return index
     }
 
-    export function createRegularPolygonVertices(sides: number, radius: number): Point[] {
-      sides = ExtraMath.clamp(Math.round(sides), 3, 16)
-      radius = ExtraMath.clamp(radius, 1, Infinity)
+    export function createRegularPolygonVertices(radius: number, sides: number): Point[] {
+      sides = EMath.clamp(Math.round(sides), 3, 16)
+      radius = EMath.clamp(radius, 1, Infinity)
       const vertices: Point[] = []
       const angleStep = (2 * Math.PI) / sides
 

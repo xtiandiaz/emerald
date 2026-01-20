@@ -1,9 +1,9 @@
 import type { Point } from 'pixi.js'
 import { Physics } from './'
 import { isNearlyEqual, Vector } from '../core'
-import { Body } from '../components'
+import { RigidBody } from '../components'
 import { type Collision } from '../collision'
-import { ExtraMath } from '../extras'
+import { EMath } from '../extras'
 
 export class PhysicsEngine {
   // Rotation radii and their orthogonals per contact-point
@@ -21,15 +21,15 @@ export class PhysicsEngine {
   // Tangent
   private T = new Vector()
 
-  stepBody(body: Body, gravity: Physics.Gravity, PPM: number, dT: number) {
+  stepBody(body: RigidBody, gravity: Physics.Gravity, PPM: number, dT: number) {
     if (body.isStatic) {
       return
     }
     if (!body.isKinematic) {
       const forces = gravity.vector.multiplyScalar(gravity.value)
-      forces.x += body.force.x / dT
-      forces.y += body.force.y / dT
-      body.force.set(0, 0)
+      forces.x += body._force.x / dT
+      forces.y += body._force.y / dT
+      body._force.set(0, 0)
 
       body.velocity.x += forces.x * dT
       body.velocity.x *= 1 - body._drag.x
@@ -41,23 +41,23 @@ export class PhysicsEngine {
       body.torque = 0
     }
 
-    body.transform.position.x += body.velocity.x * PPM * dT
-    body.transform.position.y += body.velocity.y * PPM * dT
-    body.transform.rotation += body.angularVelocity * PPM * dT
+    body._transform.position.x += body.velocity.x * PPM * dT
+    body._transform.position.y += body.velocity.y * PPM * dT
+    body._transform.rotation += body.angularVelocity * PPM * dT
   }
 
-  separateBodies(A: Body, B: Body, depth: Vector) {
+  separateBodies(A: RigidBody, B: RigidBody, depth: Vector) {
     if (A.isStatic) {
-      B.transform.position.x += depth.x
-      B.transform.position.y += depth.y
+      B._transform.position.x += depth.x
+      B._transform.position.y += depth.y
     } else if (B.isStatic) {
-      A.transform.position.x -= depth.x
-      A.transform.position.y -= depth.y
+      A._transform.position.x -= depth.x
+      A._transform.position.y -= depth.y
     } else {
-      A.transform.position.x -= depth.x * 0.5
-      A.transform.position.y -= depth.y * 0.5
-      B.transform.position.x += depth.x * 0.5
-      B.transform.position.y += depth.y * 0.5
+      A._transform.position.x -= depth.x * 0.5
+      A._transform.position.y -= depth.y * 0.5
+      B._transform.position.x += depth.x * 0.5
+      B._transform.position.y += depth.y * 0.5
     }
   }
 
@@ -141,16 +141,16 @@ export class PhysicsEngine {
     this.applyImpulses(B, this.rBs, pointCount, 1)
   }
 
-  private resetRotationRadii(A: Body, B: Body, point: Point, index: number) {
+  private resetRotationRadii(A: RigidBody, B: RigidBody, point: Point, index: number) {
     const rA = this.rAs[index]!
     const rB = this.rBs[index]!
-    point.subtract(A.transform.position, rA)
-    point.subtract(B.transform.position, rB)
+    point.subtract(A._transform.position, rA)
+    point.subtract(B._transform.position, rB)
     rA.orthogonalize(this.rAOrths[index]!)
     rB.orthogonalize(this.rBOrths[index]!)
   }
 
-  private resetRelativeVelocity(A: Body, B: Body, index: number) {
+  private resetRelativeVelocity(A: RigidBody, B: RigidBody, index: number) {
     const vr = this.vrs[index]
     B.velocity
       .add(this.rBOrths[index]!.multiplyScalar(B.angularVelocity), vr)
@@ -163,7 +163,7 @@ export class PhysicsEngine {
     this.Jfs.forEach((Jf) => Jf.set(0, 0))
   }
 
-  private applyImpulses(body: Body, rs: Vector[], pointCount: number, sign: 1 | -1) {
+  private applyImpulses(body: RigidBody, rs: Vector[], pointCount: number, sign: 1 | -1) {
     if (body.isStatic) {
       return
     }
@@ -184,12 +184,12 @@ export namespace PhysicsEngine {
     friction: Physics.Friction
   }
 
-  export function getResolutionCoefficients(A: Body, B: Body): ResolutionCoefficients {
+  export function getResolutionCoefficients(A: RigidBody, B: RigidBody): ResolutionCoefficients {
     return {
       restitution: Math.max(A._restitution, B._restitution),
       friction: {
-        static: ExtraMath.average(A._friction.static, B._friction.static),
-        dynamic: ExtraMath.average(A._friction.dynamic, B._friction.dynamic),
+        static: EMath.average(A._friction.static, B._friction.static),
+        dynamic: EMath.average(A._friction.dynamic, B._friction.dynamic),
       },
     }
   }

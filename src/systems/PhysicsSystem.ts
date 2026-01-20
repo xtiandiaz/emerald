@@ -1,9 +1,10 @@
-import { System, World, Vector, type SignalBus, Entity } from '../core'
+import { System, Vector, type SignalBus, Entity, Stage, Disconnectable } from '../core'
 import { Physics, PhysicsEngine } from '../physics'
 import { Collision } from '../collision'
-import { Body } from '../components'
+import { RigidBody } from '../components'
 import { DebugSignal } from '../debug/DebugSignal'
 import { Debug } from '../debug'
+import { Input } from '../input'
 
 export interface PhysicsSystemOptions {
   gravity: Physics.Gravity
@@ -41,27 +42,28 @@ export class PhysicsSystem extends System {
     }
   }
 
-  init(world: World, signalBus: SignalBus): void {
+  init(stage: Stage, signals: SignalBus): Disconnectable[] {
     if (this.options.debug) {
-      this.initDebug(world, signalBus)
+      this.initDebug(stage, signals)
     } else if (this.debugGraphics) {
-      world.removeChild(this.debugGraphics)
-      world.getLayer(World.Layer.DEBUG).detach(this.debugGraphics)
+      stage.removeChild(this.debugGraphics)
+      stage.getLayer(Stage.Layer.DEBUG).detach(this.debugGraphics)
       this.debugGraphics = undefined
     }
+    return []
   }
 
-  fixedUpdate(world: World, signalBus: SignalBus, dT: number): void {
+  fixedUpdate(stage: Stage, _: SignalBus, dT: number): void {
     const gravity = this.options.gravity
     const PPM = this.options.PPM
-    const bodies = world._bodies
+    const bodies = stage._bodies
     const separation = new Vector()
     const collisions: Collision[] = []
     // const vectorOne = new Vector(1, 1)
     let contact: Collision.Contact | undefined
     let collision: Collision | undefined
     let entity: Entity
-    let body: Body
+    let body: RigidBody
 
     for (let i = 0; i < bodies.length; i++) {
       bodies[i]![1].collidedIds.clear()
@@ -78,10 +80,10 @@ export class PhysicsSystem extends System {
 
         this.engine.stepBody(body, gravity, PPM, dT)
 
-        entity = world.getEntity(bodies[i]![0])!
-        entity.position.copyFrom(body.transform.position)
-        entity.rotation = body.transform.rotation
-        entity.scale.set(body.transform.scale.x)
+        entity = stage.getEntity(bodies[i]![0])!
+        entity.position.copyFrom(body.position)
+        entity.rotation = body.rotation
+        entity.scale.set(body.scale)
 
         this.debugGraphics?.drawCollider(body)
       }
@@ -121,10 +123,14 @@ export class PhysicsSystem extends System {
     }
   }
 
-  private initDebug(world: World, signalBus: SignalBus) {
+  private initDebug(stage: Stage, signalBus: SignalBus) {
+    if (!this.options.debug?.rendersCollisions) {
+      return
+    }
+
     this.debugGraphics = new Debug.Graphics()
-    world.addChild(this.debugGraphics)
-    world.getLayer(World.Layer.DEBUG).attach(this.debugGraphics)
+    stage.addChild(this.debugGraphics)
+    stage.getLayer(Stage.Layer.DEBUG).attach(this.debugGraphics)
 
     signalBus.emit(new DebugSignal.PhysicsEnabled(this.options.iterations))
   }
