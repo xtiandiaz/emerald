@@ -1,52 +1,38 @@
-import { Application, Container, Ticker, type ApplicationOptions } from 'pixi.js'
+import { Application, Ticker, type ApplicationOptions } from 'pixi.js'
+import { Scene, Screen, type Disconnectable } from '../core'
 import { type FixedTime, type GameState } from '.'
-import {
-  Scene,
-  Screen,
-  SignalController,
-  clamp,
-  type SignalBus,
-  type Disconnectable,
-} from '../core'
-import { ScreenResized } from '../signals'
+import { Components } from '../components'
+import { Signals, SignalController } from '../signals'
+import { EMath } from '../extras'
 import { Debug } from '../debug'
 
-export interface GameOptions extends ApplicationOptions {
-  debug: Debug.GameOptions
-}
-
-export class Game<State extends GameState> extends Application {
-  protected display!: Container
-  protected signalController!: SignalController
-  protected scene?: Scene
+export class Game<
+  State extends GameState,
+  Cs extends Components,
+  Ss extends Signals,
+> extends Application {
+  protected signalController!: SignalController<Ss>
+  protected scene?: Scene<Cs, Ss>
   private connections: Disconnectable[] = []
   private fixedTime: FixedTime = {
     step: 1 / 60,
     reserve: 0,
   }
-  private options?: Partial<GameOptions>
   private debugDisplay?: Debug.Display
 
   constructor(
     public state: State,
-    private scenes: Scene[],
+    private scenes: Scene<Cs, Ss>[],
   ) {
     super()
   }
 
-  connect?(signalBus: SignalBus, state: State): Disconnectable[]
+  connect?(signals: Signals.Bus<Ss>, state: State): Disconnectable[]
 
-  async init(options: Partial<GameOptions>): Promise<void> {
-    this.options = options
-
+  async init(options: Partial<Game.Options>): Promise<void> {
     await super.init(options)
 
-    this.display = new Container()
-    this.stage.addChild(this.display)
-
     this.signalController = new SignalController()
-
-    this.initDebugIfNeeded()
 
     this.connections.push(...(this.connect?.(this.signalController, this.state) ?? []))
 
@@ -55,8 +41,6 @@ export class Game<State extends GameState> extends Application {
 
     this.renderer.on('resize', this.onResized, this)
     this.onResized(this.screen.width, this.screen.height)
-
-    this.display.hitArea = this.screen
   }
 
   deinit() {
@@ -79,6 +63,7 @@ export class Game<State extends GameState> extends Application {
   async play(label: string) {
     const nextScene = this.scenes.find((s) => s.label == label)
     if (!nextScene) {
+      console.error(`Unknown Scene '${label}'`)
       return
     }
 
@@ -87,7 +72,7 @@ export class Game<State extends GameState> extends Application {
       this.scene.deinit()
     }
 
-    await nextScene.init(this.signalController, this.display)
+    await nextScene.init(this.signalController)
 
     this.scene = nextScene
     this.stage.addChild(this.scene)
@@ -97,7 +82,7 @@ export class Game<State extends GameState> extends Application {
     if (this.state.isPaused) {
       return
     }
-    this.fixedTime.reserve = clamp(this.fixedTime.reserve + ticker.deltaMS, 0, 0.1)
+    this.fixedTime.reserve = EMath.clamp(this.fixedTime.reserve + ticker.deltaMS, 0, 0.1)
 
     while (this.scene && this.fixedTime.reserve >= this.fixedTime.step) {
       this.scene.fixedUpdate(this.signalController, this.fixedTime.step)
@@ -113,24 +98,17 @@ export class Game<State extends GameState> extends Application {
     this.signalController.emitQueuedSignals()
 
     this.scene?.update(this.signalController, ticker.deltaTime)
+    this.scene?.updateDebug(ticker.FPS)
   }
 
   private onResized(width: number, height: number) {
-    Screen._w = width
-    Screen._h = height
-    this.display.width = width
-    this.display.height = height
+    Screen._width = width
+    Screen._height = height
 
-    this.signalController.queue(new ScreenResized(width, height))
+    this.signalController.queue('screen-resized', { width, height })
   }
+}
 
-  private initDebugIfNeeded() {
-    if (!this.options?.debug) {
-      return
-    }
-    this.debugDisplay = new Debug.Display(this.options.debug)
-    this.stage.addChild(this.debugDisplay)
-
-    // this.debugDisplay.init(this.ticker, this.signalController)
-  }
+export namespace Game {
+  export interface Options extends ApplicationOptions {}
 }

@@ -1,12 +1,17 @@
-import { Entity, Stage, System, type SignalBus } from '../core'
+import { Entity, Stage, System } from '../core'
 import { Collision, Collider } from '../collision'
+import { Components } from '../components'
+import { Signals } from '../signals'
 
 export interface CollisionSensorSystemOptions {
   usesOnlyAABBIntersectionForCollisionDetection: boolean
   collisionLayerMap?: Collision.LayerMap
 }
 
-export class CollisionSensorSystem extends System {
+export class CollisionSensorSystem<Cs extends Components, Ss extends Signals> extends System<
+  Cs,
+  Ss
+> {
   private options: CollisionSensorSystemOptions
 
   constructor(options?: Partial<CollisionSensorSystemOptions>) {
@@ -18,10 +23,10 @@ export class CollisionSensorSystem extends System {
     }
   }
 
-  fixedUpdate(stage: Stage, signalBus: SignalBus, dT: number): void {
+  fixedUpdate(stage: Stage<Cs>, signals: Signals.Emitter<Ss>, dT: number): void {
     const sensors = stage._collisionSensors
     const bodies = stage._bodies
-    let entity: Entity
+    let entity: Entity<Cs>
 
     for (let i = 0; i < sensors.length; i++) {
       const [idA, A] = sensors[i]!

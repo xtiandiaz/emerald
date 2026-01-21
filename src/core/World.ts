@@ -4,7 +4,7 @@ import {
   type Component,
   type EntityComponent,
   type SomeComponent,
-  type SomeEntity,
+  type EntityConstructor,
 } from './'
 import { RigidBody, CollisionSensor } from '../components'
 import { Container, RenderLayer } from 'pixi.js'
@@ -36,7 +36,7 @@ export class World extends Container {
     return this.renderLayers.get(key)!
   }
 
-  createEntity<T extends Entity>(type: SomeEntity<T>): T {
+  createEntity<T extends Entity>(type: EntityConstructor<T>): T {
     const id = this.nextEntityId++
     const entity = new type(
       id,
@@ -74,7 +74,7 @@ export class World extends Container {
     return this.idToEntityMap.get(id) as T
   }
 
-  getEntityByType<T extends Entity>(type: SomeEntity<T>): T | undefined {
+  getEntityByType<T extends Entity>(type: EntityConstructor<T>): T | undefined {
     return this.typeToEntityMap.get(type.name) as T
   }
 

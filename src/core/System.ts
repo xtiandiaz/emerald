@@ -1,9 +1,11 @@
-import type { SignalBus, Disconnectable, Stage, ComponentIndex } from './'
+import type { Stage, Disconnectable } from './'
+import { Components } from '../components'
+import { Signals } from '../signals'
 import { Input } from '../input'
 
-export class System<CI extends ComponentIndex> {
-  init?(stage: Stage<CI>, signals: SignalBus, input: Input.Provider): Disconnectable[]
+export class System<Cs extends Components, Ss extends Signals> {
+  init?(stage: Stage<Cs>, signals: Signals.Bus<Ss>, input: Input.Provider): Disconnectable[]
 
-  fixedUpdate?(stage: Stage<CI>, signals: SignalBus, dT: number): void
-  update?(stage: Stage<CI>, signals: SignalBus, dT: number): void
+  fixedUpdate?(stage: Stage<Cs>, signals: Signals.Emitter<Ss>, dT: number): void
+  update?(stage: Stage<Cs>, signals: Signals.Emitter<Ss>, dT: number): void
 }

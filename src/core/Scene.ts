@@ -1,15 +1,22 @@
-import { ContainerChild, ContainerEvents, Sprite } from 'pixi.js'
-import { ComponentIndex, Stage, System, type Disconnectable, type SignalBus } from '../core'
+import { ContainerChild, ContainerEvents, RenderLayer, Sprite, Ticker } from 'pixi.js'
+import { Stage, System, type Disconnectable } from '../core'
+import { Components } from '../components'
+import { Signals } from '../signals'
 import { Input } from '../input'
-import { ScreenResized } from '../signals'
+import { Debug } from '../debug'
 
-export class Scene<CI extends ComponentIndex> extends Stage<CI> implements Input.Provider {
+export class Scene<Cs extends Components, Ss extends Signals>
+  extends Stage<Cs>
+  implements Input.Provider
+{
   protected connections: Disconnectable[] = []
   private inputPad = new Sprite()
+  private debugDisplay?: Debug.Display
 
   constructor(
     public readonly label: string,
-    protected readonly systems: System<CI>[],
+    protected readonly systems: System<Cs, Ss>[],
+    protected readonly options?: Partial<Scene.Options>,
   ) {
     super()
 
@@ -20,36 +27,40 @@ export class Scene<CI extends ComponentIndex> extends Stage<CI> implements Input
 
   async load?(): Promise<void>
 
-  build?(stage: Stage<CI>): void
+  build?(stage: Stage<Cs>): void
 
-  connect?(input: Input.Provider, signals: SignalBus): Disconnectable[]
+  connect?(signals: Signals.Bus<Ss>, input: Input.Provider): Disconnectable[]
 
-  async init(signalBus: SignalBus): Promise<void> {
+  async init(signals: Signals.Bus<Ss>): Promise<void> {
+    this.initDebugIfNeeded(signals)
+
     await this.load?.()
 
     this.build?.(this)
 
-    this.connect?.(this, signalBus)
+    this.connect?.(signals, this)
 
-    this.systems.forEach((s) => this.connections.push(...(s.init?.(this, signalBus, this) ?? [])))
+    this.systems.forEach((s) => this.connections.push(...(s.init?.(this, signals, this) ?? [])))
 
-    signalBus.connect(ScreenResized, (s) => {
+    signals.connect('screen-resized', (s) => {
       this.inputPad.width = s.width
       this.inputPad.height = s.height
     })
   }
 
   deinit(): void {
+    this.debugDisplay?.deinit()
+
     this.connections.forEach((c) => c.disconnect())
   }
 
-  fixedUpdate(signalBus: SignalBus, dT: number) {
+  fixedUpdate(signalBus: Signals.Bus<Ss>, dT: number) {
     this.systems.forEach((s) => {
       s.fixedUpdate?.(this, signalBus, dT)
     })
   }
 
-  update(signalBus: SignalBus, dT: number) {
+  update(signalBus: Signals.Bus<Ss>, dT: number) {
     this.systems.forEach((s) => {
       s.update?.(this, signalBus, dT)
     })
@@ -67,5 +78,28 @@ export class Scene<CI extends ComponentIndex> extends Stage<CI> implements Input
     connector: Input.ContainerEventConnector<T>,
   ): Disconnectable {
     return Input.connectContainerEvent(type, this.inputPad, connector)
+  }
+
+  // Debug ⬇️
+
+  initDebugIfNeeded(signals: Signals.Bus<Ss>) {
+    if (!this.options?.debug) {
+      return
+    }
+    this.debugDisplay = new Debug.Display(this.options.debug)
+    this.getLayer(Stage.Layer.DEBUG).attach(this.debugDisplay)
+    this.addChild(this.debugDisplay)
+
+    this.debugDisplay.init(this, signals)
+  }
+
+  updateDebug(fps: number) {
+    this.debugDisplay?.stats?.update(fps)
+  }
+}
+
+export namespace Scene {
+  export interface Options {
+    debug: Debug.Options.Scene
   }
 }

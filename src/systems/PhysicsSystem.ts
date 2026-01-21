@@ -1,8 +1,8 @@
-import { System, Vector, type SignalBus, Entity, Stage, Disconnectable } from '../core'
+import { System, Vector, Entity, Stage, Disconnectable } from '../core'
+import { Components, RigidBody } from '../components'
+import { Signals } from '../signals'
 import { Physics, PhysicsEngine } from '../physics'
 import { Collision } from '../collision'
-import { RigidBody } from '../components'
-import { DebugSignal } from '../debug/DebugSignal'
 import { Debug } from '../debug'
 import { Input } from '../input'
 
@@ -11,12 +11,10 @@ export interface PhysicsSystemOptions {
   iterations: number
   PPM: number // Pixels Per Meter
   collisionLayerMap?: Collision.LayerMap
-  debug?: {
-    rendersCollisions: boolean
-  }
+  debug?: Debug.Options.PhysicsSystem
 }
 
-export class PhysicsSystem extends System {
+export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends System<Cs, Ss> {
   private engine = new PhysicsEngine()
   private options: PhysicsSystemOptions
   private debugGraphics?: Debug.Graphics
@@ -42,18 +40,13 @@ export class PhysicsSystem extends System {
     }
   }
 
-  init(stage: Stage, signals: SignalBus): Disconnectable[] {
-    if (this.options.debug) {
-      this.initDebug(stage, signals)
-    } else if (this.debugGraphics) {
-      stage.removeChild(this.debugGraphics)
-      stage.getLayer(Stage.Layer.DEBUG).detach(this.debugGraphics)
-      this.debugGraphics = undefined
-    }
+  init(stage: Stage<Cs>, signals: Signals.Bus<Ss>, _input: Input.Provider): Disconnectable[] {
+    this.initDebugIfNeeded(stage, signals)
+
     return []
   }
 
-  fixedUpdate(stage: Stage, _: SignalBus, dT: number): void {
+  fixedUpdate(stage: Stage<Cs>, _signals: Signals.Emitter<Ss>, dT: number): void {
     const gravity = this.options.gravity
     const PPM = this.options.PPM
     const bodies = stage._bodies
@@ -62,7 +55,7 @@ export class PhysicsSystem extends System {
     // const vectorOne = new Vector(1, 1)
     let contact: Collision.Contact | undefined
     let collision: Collision | undefined
-    let entity: Entity
+    let entity: Entity<Cs>
     let body: RigidBody
 
     for (let i = 0; i < bodies.length; i++) {
@@ -123,7 +116,7 @@ export class PhysicsSystem extends System {
     }
   }
 
-  private initDebug(stage: Stage, signalBus: SignalBus) {
+  private initDebugIfNeeded(stage: Stage<Cs>, signals: Signals.Bus<Ss>) {
     if (!this.options.debug?.rendersCollisions) {
       return
     }
@@ -132,6 +125,6 @@ export class PhysicsSystem extends System {
     stage.addChild(this.debugGraphics)
     stage.getLayer(Stage.Layer.DEBUG).attach(this.debugGraphics)
 
-    signalBus.emit(new DebugSignal.PhysicsEnabled(this.options.iterations))
+    signals.emit('debug-physics-enabled', { iterations: this.options.iterations })
   }
 }
