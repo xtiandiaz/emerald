@@ -24,11 +24,7 @@ export namespace Collision {
     return !map || (((map.get(layerA) ?? 0) & layerB) | ((map.get(layerB) ?? 0) & layerA)) != 0
   }
 
-  export function correctDirectionIfNeeded(
-    A: Collider.Shape,
-    B: Collider.Shape,
-    out_contact: Contact,
-  ) {
+  export function correctDirectionIfNeeded(A: Collider, B: Collider, out_contact: Contact) {
     if (B.center.subtract(A.center).dot(out_contact.normal) < 0) {
       out_contact.normal.multiplyScalar(-1, out_contact.normal)
     }

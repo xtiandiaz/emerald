@@ -2,37 +2,17 @@ import { ObservablePoint, Point, type PointData } from 'pixi.js'
 import { clamp, Vector, VectorData } from '../core'
 import 'pixi.js/math-extras'
 
-// Point.prototype.getRotationDirection = function (this, target: Point) {
-//   return this.cross(target)
-// }
-
-// declare module 'pixi.js' {
-//   interface Rectangle {
-//     size(): Point
-//     center(): Point
-//   }
-// }
-
-// Rectangle.prototype.size = function (this): Point {
-//   return new Point(this.width, this.height)
-// }
-// Rectangle.prototype.center = function (this): Point {
-//   return new Point(this.x + this.width / 2, this.y + this.height / 2)
-// }
-
-// }
-
 declare global {
   interface Vector2Math {
-    clamp<T extends Point>(min: PointData, max: PointData, out_vector?: T): T
-    clampScalar<T extends PointData>(min: number, max: number, out_vector?: T): T
-    clampMagnitude<T extends PointData>(maxMagnitude: number, out_vector?: T): T
-    crossScalar<T extends PointData>(scalar: number, out_vector?: T): T
-    divideBy<T extends PointData>(other: T, out_vector?: T): T
-    divideByScalar<T extends PointData>(scalar: number, out_vector?: T): T
+    clamp<T extends PointData = Point>(min: PointData, max: PointData, out_vector?: T): T
+    clampScalar<T extends PointData = Point>(min: number, max: number, out_vector?: T): T
+    clampMagnitude<T extends PointData = Point>(maxMagnitude: number, out_vector?: T): T
+    crossScalar<T extends PointData = Point>(scalar: number, out_vector?: T): T
+    divideBy<T extends PointData = Point>(other: T, out_vector?: T): T
+    divideByScalar<T extends PointData = Point>(scalar: number, out_vector?: T): T
     isNearlyEqual(other: PointData, minDistance?: number): boolean
 
-    orthogonalize<T extends VectorData>(out_vector?: T): T
+    orthogonalize<T extends VectorData = Vector>(out_vector?: T): T
   }
 }
 

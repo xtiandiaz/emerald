@@ -33,13 +33,6 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Sy
     }
   }
 
-  resetOptions(options: Partial<PhysicsSystemOptions>) {
-    this.options = {
-      ...this.options,
-      ...options,
-    }
-  }
-
   init(stage: Stage<Cs>, signals: Signals.Bus<Ss>, _input: Input.Provider): Disconnectable[] {
     this.initDebugIfNeeded(stage, signals)
 
@@ -78,7 +71,7 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Sy
         entity.rotation = body.rotation
         entity.scale.set(body.scale)
 
-        this.debugGraphics?.drawCollider(body)
+        this.debugGraphics?.drawCollider(body.collider)
       }
 
       for (let i = 0; i < bodies.length - 1; i++) {
@@ -89,7 +82,7 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Sy
           if (!Collision.canCollide(A.layer, B.layer, this.options.collisionLayerMap)) {
             continue
           }
-          contact = A.shape.findContact(B.shape, true)
+          contact = A.collider.findContact(B.collider, true)
           if (!contact || !contact.points) {
             continue
           }

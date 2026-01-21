@@ -34,15 +34,15 @@ export class CollisionSensorSystem<Cs extends Components, Ss extends Signals> ex
       A.collidedIds.clear()
 
       entity = stage.getEntity(idA)!
-      A._updateTransform(entity.position, entity.rotation, entity.scale.x)
+      A.collider.updateTransform(entity.position, entity.rotation, entity.scale.x)
 
       for (let j = i + 1; j < sensors.length; j++) {
         const [idB, B] = sensors[j]!
 
         entity = stage.getEntity(idB)!
-        B._updateTransform(entity.position, entity.rotation, entity.scale.x)
+        B.collider.updateTransform(entity.position, entity.rotation, entity.scale.x)
 
-        if (this.isTrigger(A, B)) {
+        if (this.isTrigger(A.collider, B.collider)) {
           A.collidedIds.add(idB)
           B.collidedIds.add(idA)
         }
@@ -50,7 +50,7 @@ export class CollisionSensorSystem<Cs extends Components, Ss extends Signals> ex
       for (let k = 0; k < bodies.length; k++) {
         const [idC, C] = bodies[k]!
 
-        if (this.isTrigger(A, C)) {
+        if (this.isTrigger(A.collider, C.collider)) {
           A.collidedIds.add(idC)
           C.collidedIds.add(idA)
         }
@@ -61,9 +61,8 @@ export class CollisionSensorSystem<Cs extends Components, Ss extends Signals> ex
   private isTrigger(A: Collider, B: Collider): boolean {
     return (
       Collision.canCollide(A.layer, B.layer, this.options.collisionLayerMap) &&
-      ((this.options.usesOnlyAABBIntersectionForCollisionDetection &&
-        A.shape.hasAABBIntersection(B.shape)) ||
-        A.shape.findContact(B.shape, false) != undefined)
+      ((this.options.usesOnlyAABBIntersectionForCollisionDetection && A.hasAABBIntersection(B)) ||
+        A.findContact(B, false) != undefined)
     )
   }
 }

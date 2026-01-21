@@ -3,32 +3,11 @@ import { Vector, Component, clamp01, type VectorData } from '../core'
 import { Collider } from '../collision'
 import { Physics } from '../physics'
 
-export interface RigidBodyOptions {
-  isStatic: boolean
-  isKinematic: boolean
-  layer: number
-
-  initialPosition: PointData
-  initialRotation: number
-  initialScale: number
-
-  initialVelocity: VectorData
-  initialAngularVelocity: number
-
-  restitution: number
-  friction: Partial<Physics.Friction>
-
-  drag: VectorData
-  angularDrag: number
-}
-
-export class RigidBody implements Component, Collider {
+export class RigidBody implements Component {
   readonly collidedIds = new Set<number>()
 
   isStatic: boolean
   isKinematic: boolean
-
-  layer: number
 
   readonly velocity = new Vector()
   readonly _drag = new Vector()
@@ -65,18 +44,19 @@ export class RigidBody implements Component, Collider {
   }
 
   constructor(
-    public readonly shape: Collider.Shape,
-    options?: Partial<RigidBodyOptions>,
+    public readonly collider: Collider,
+    options?: Partial<RigidBody.Options>,
   ) {
-    this._transform = shape._transform
+    collider.layer = options?.layer ?? 1
+
+    this._transform = collider._transform
 
     this.isStatic = options?.isStatic ?? false
     this.isKinematic = options?.isKinematic ?? false
-    this.layer = options?.layer ?? 1
 
-    this.mass = this.isStatic ? 0 : shape.areaProperties.mass
+    this.mass = this.isStatic ? 0 : collider._areaProperties.mass
     this.invMass = this.mass > 0 ? 1 / this.mass : 0
-    this.inertia = this.isStatic ? 0 : shape.areaProperties.momentOfInertia
+    this.inertia = this.isStatic ? 0 : collider._areaProperties.momentOfInertia
     this.invInertia = this.inertia > 0 ? 1 / this.inertia : 0
 
     if (options?.restitution) this.setRestitution(options?.restitution)
@@ -119,5 +99,26 @@ export class RigidBody implements Component, Collider {
     this.torque += this._transform.matrix
       .applyInverse(position ?? this._transform.position) // ??
       .cross(force)
+  }
+}
+
+export namespace RigidBody {
+  export interface Options {
+    isStatic: boolean
+    isKinematic: boolean
+    layer: number
+
+    initialPosition: PointData
+    initialRotation: number
+    initialScale: number
+
+    initialVelocity: VectorData
+    initialAngularVelocity: number
+
+    restitution: number
+    friction: Partial<Physics.Friction>
+
+    drag: VectorData
+    angularDrag: number
   }
 }
