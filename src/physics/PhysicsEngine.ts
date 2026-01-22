@@ -1,6 +1,6 @@
 import type { Point } from 'pixi.js'
 import { Physics } from './'
-import { isNearlyEqual, Vector } from '../core'
+import { Vector } from '../core'
 import { RigidBody } from '../components'
 import { type Collision } from '../collision'
 import { EMath } from '../extras'
@@ -64,24 +64,20 @@ export class PhysicsEngine {
   /*  
     Collision Response: https://en.wikipedia.org/wiki/Collision_response#Impulse-based_reaction_model
   */
-  resolveCollision(collision: Collision) {
-    if (!collision.points) {
-      return
-    }
-
-    const A = collision.A
-    const B = collision.B
+  resolveCollision(contact: Collision.Contact) {
+    const A = contact.A
+    const B = contact.B
     const zeroVector = new Vector()
-    const pointCount = collision.points.length
+    const pointCount = contact.points.length
     const coeffs = PhysicsEngine.getResolutionCoefficients(A, B)
     const sumInvMasses = A.invMass + B.invMass
-    const totalDepth = collision.points.reduce((acc, p) => (acc += p.depth), 0)
-    const N = collision.normal
+    const totalDepth = contact.points.reduce((acc, p) => (acc += p.depth), 0)
+    const N = contact.normal
 
     this.clearImpulses()
 
     for (let i = 0; i < pointCount; i++) {
-      const cp = collision.points[i]!
+      const cp = contact.points[i]!
       this.resetRotationRadii(A, B, cp.point, i)
 
       this.resetRelativeVelocity(A, B, i)
@@ -104,7 +100,7 @@ export class PhysicsEngine {
     }
 
     for (let i = 0; i < pointCount; i++) {
-      const cp = collision.points[i]!
+      const cp = contact.points[i]!
       this.resetRotationRadii(A, B, cp.point, i)
 
       this.resetRelativeVelocity(A, B, i)

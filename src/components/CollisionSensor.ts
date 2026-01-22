@@ -1,8 +1,8 @@
 import { Component } from '../core'
-import { Collider } from '../collision'
+import { Collider, Collision } from '../collision'
 
-export class CollisionSensor implements Component {
-  readonly collidedIds = new Set<number>()
+export class CollisionSensor implements Component, Collision.Tracker {
+  readonly collisions = new Map<number, Collision.Instance>()
 
   constructor(
     public readonly collider: Collider,

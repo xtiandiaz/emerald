@@ -1,11 +1,11 @@
 import { Transform, Point, type PointData } from 'pixi.js'
 import { Vector, Component, type VectorData } from '../core'
-import { Collider } from '../collision'
+import { Collider, Collision } from '../collision'
 import { Physics } from '../physics'
 import { EMath } from '../extras'
 
-export class RigidBody implements Component {
-  readonly collidedIds = new Set<number>()
+export class RigidBody implements Component, Collision.Tracker {
+  readonly collisions = new Map<number, Collision.Instance>()
 
   isStatic: boolean
   isKinematic: boolean

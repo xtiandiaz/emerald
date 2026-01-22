@@ -1,32 +1,30 @@
-import { Point } from 'pixi.js'
-import { Collider } from '.'
-import { Geometry } from '../geometry'
+import { Collider } from './Collider'
 import { RigidBody } from '../components'
+import { VectorData } from '../core'
 
-export interface Collision extends Collision.Contact {
-  A: RigidBody
-  B: RigidBody
-  points: Collision.ContactPoint[]
-}
 export namespace Collision {
   export type LayerMap = Map<number, number>
 
-  export interface ContactPoint {
-    point: Point
-    depth: number
+  export interface Contact extends Collider.Contact {
+    A: RigidBody
+    B: RigidBody
+    points: Collider.ContactPoint[]
   }
 
-  export interface Contact extends Geometry.ProjectionOverlap {
-    points?: ContactPoint[]
+  export interface Instance {
+    colliderId: number
+    direction: VectorData
   }
 
-  export function canCollide(layerA: number, layerB: number, map?: LayerMap): boolean {
-    return !map || (((map.get(layerA) ?? 0) & layerB) | ((map.get(layerB) ?? 0) & layerA)) != 0
+  export const instance = (
+    colliderId: number,
+    contact: Collider.Contact,
+    invertDirection: boolean,
+  ): Instance => {
+    return { colliderId, direction: contact.normal.multiplyScalar(invertDirection ? -1 : 1) }
   }
 
-  export function correctDirectionIfNeeded(A: Collider, B: Collider, out_contact: Contact) {
-    if (B.center.subtract(A.center).dot(out_contact.normal) < 0) {
-      out_contact.normal.multiplyScalar(-1, out_contact.normal)
-    }
+  export interface Tracker {
+    collisions: Map<number, Instance>
   }
 }

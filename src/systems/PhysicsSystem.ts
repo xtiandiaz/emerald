@@ -2,7 +2,7 @@ import { System, Vector, Entity, Stage, Disconnectable } from '../core'
 import { Components, RigidBody } from '../components'
 import { Signals } from '../signals'
 import { Physics, PhysicsEngine } from '../physics'
-import { Collision } from '../collision'
+import { Collider, Collision } from '../collision'
 import { Debug } from '../debug'
 import { Input } from '../input'
 
@@ -44,21 +44,21 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Sy
     const PPM = this.options.PPM
     const bodies = stage._bodies
     const separation = new Vector()
-    const collisions: Collision[] = []
-    let contact: Collision.Contact | undefined
-    let collision: Collision | undefined
+    const contacts: Collision.Contact[] = []
     let entity: Entity<Cs>
     let body: RigidBody
+    let colliderContact: Collider.Contact | undefined
+    let collisionContact: Collision.Contact | undefined
 
     for (let i = 0; i < bodies.length; i++) {
-      bodies[i]![1].collidedIds.clear()
+      bodies[i]![1].collisions.clear()
     }
 
     dT /= this.options.iterations
     for (let it = 0; it < this.options.iterations; it++) {
       this.debugGraphics?.clear()
 
-      collisions.length = 0
+      contacts.length = 0
 
       for (let i = 0; i < bodies.length; i++) {
         body = bodies[i]![1]
@@ -78,38 +78,34 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Sy
         for (let j = i + 1; j < bodies.length; j++) {
           const [idB, B] = bodies[j]!
 
-          if (
-            !Collision.canCollide(
-              A.collider.layer,
-              B.collider.layer,
-              this.options.collisionLayerMap,
-            )
-          ) {
+          if (!Collider.canCollide(A.collider, B.collider, this.options.collisionLayerMap)) {
             continue
           }
-          contact = A.collider.findContact(B.collider, true)
-          if (!contact || !contact.points) {
-            continue
-          }
-          collisions.push({ A, B, points: contact.points, ...contact })
 
-          A.collidedIds.add(idB)
-          B.collidedIds.add(idA)
+          colliderContact = A.collider.findContact(B.collider, true)
+          if (!colliderContact || !colliderContact.points) {
+            continue
+          }
+
+          contacts.push({ A, B, points: colliderContact.points, ...colliderContact })
+
+          A.collisions.set(idB, Collision.instance(idB, colliderContact, true))
+          B.collisions.set(idA, Collision.instance(idA, colliderContact, false))
         }
       }
 
-      for (let i = 0; i < collisions.length; i++) {
-        collision = collisions[i]!
+      for (let i = 0; i < contacts.length; i++) {
+        collisionContact = contacts[i]!
 
-        this.debugGraphics?.drawCollision(collision)
+        this.debugGraphics?.drawCollisionContact(collisionContact)
 
         this.engine.separateBodies(
-          collision.A,
-          collision.B,
-          collision.normal.multiplyScalar(collision.depth, separation),
+          collisionContact.A,
+          collisionContact.B,
+          collisionContact.normal.multiplyScalar(collisionContact.depth, separation),
         )
 
-        this.engine.resolveCollision(collision)
+        this.engine.resolveCollision(collisionContact)
       }
     }
   }

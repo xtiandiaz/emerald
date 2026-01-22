@@ -80,7 +80,7 @@ export abstract class Collider {
     return Geometry.isAABBIntersection(this.aabb, B.aabb)
   }
 
-  findContact(B: Collider, includePoints: boolean = false): Collision.Contact | undefined {
+  findContact(B: Collider, includePoints: boolean = false): Collider.Contact | undefined {
     this.updateVerticesIfNeeded()
     B.updateVerticesIfNeeded()
 
@@ -88,7 +88,7 @@ export abstract class Collider {
       return
     }
 
-    let contact: Collision.Contact | undefined
+    let contact: Collider.Contact | undefined
     if (B instanceof Collider.Circle) {
       contact = this.findContactWithCircle(B, includePoints)
     } else if (B instanceof Collider.Polygon) {
@@ -103,11 +103,11 @@ export abstract class Collider {
   abstract findContactWithCircle(
     B: Collider.Circle,
     includePoints: boolean,
-  ): Collision.Contact | undefined
+  ): Collider.Contact | undefined
   abstract findContactWithPolygon(
     B: Collider.Polygon,
     includePoints: boolean,
-  ): Collision.Contact | undefined
+  ): Collider.Contact | undefined
 
   protected updateVertices() {
     let minX = Infinity
@@ -129,9 +129,27 @@ export abstract class Collider {
     this.aabb.max.x = maxX
     this.aabb.max.y = maxY
   }
+
+  protected correctContactDirectionIfNeeded(B: Collider, out_contact: Collider.Contact) {
+    if (B.center.subtract(this.center).dot(out_contact.normal) < 0) {
+      out_contact.normal.multiplyScalar(-1, out_contact.normal)
+    }
+  }
 }
 
 export namespace Collider {
+  export interface ContactPoint {
+    point: Point
+    depth: number
+  }
+  export interface Contact extends Geometry.ProjectionOverlap {
+    points?: ContactPoint[]
+  }
+
+  export function canCollide(A: Collider, B: Collider, map?: Collision.LayerMap): boolean {
+    return !map || (((map.get(A.layer) ?? 0) & B.layer) | ((map.get(B.layer) ?? 0) & A.layer)) != 0
+  }
+
   export class Circle extends Collider {
     readonly _areaProperties: Geometry.AreaProperties
 
@@ -153,7 +171,7 @@ export namespace Collider {
       return Geometry.Circle.projectionRange(this.center, this.radius, axis)
     }
 
-    findContactWithCircle(B: Circle, includePoints: boolean): Collision.Contact | undefined {
+    findContactWithCircle(B: Circle, includePoints: boolean): Collider.Contact | undefined {
       const radii = this.radius + B.radius
       const diffPos = B.center.subtract(this.center)
       const distSqrd = diffPos.magnitudeSquared()
@@ -164,7 +182,7 @@ export namespace Collider {
       const normal = diffPos.divideByScalar(dist)
       const depth = radii - dist
 
-      const contact: Collision.Contact = { depth, normal }
+      const contact: Collider.Contact = { depth, normal }
       if (includePoints) {
         contact.points = [
           {
@@ -176,13 +194,13 @@ export namespace Collider {
       return contact
     }
 
-    findContactWithPolygon(B: Polygon, includePoints: boolean): Collision.Contact | undefined {
-      const contact: Collision.Contact = { depth: Infinity, normal: new Vector() }
+    findContactWithPolygon(B: Polygon, includePoints: boolean): Collider.Contact | undefined {
+      const contact: Collider.Contact = { depth: Infinity, normal: new Vector() }
       if (!this.evaluateContactWithPolygon(B, contact) || !B.evaluateContact(this, contact)) {
         return
       }
 
-      Collision.correctDirectionIfNeeded(this, B, contact)
+      this.correctContactDirectionIfNeeded(B, contact)
 
       if (includePoints) {
         this.setContactPointsWithPolygon(B, contact)
@@ -197,10 +215,7 @@ export namespace Collider {
       this.aabb.max.y = this.position.y + this.radius
     }
 
-    protected evaluateContactWithPolygon(
-      polygon: Polygon,
-      out_contact: Collision.Contact,
-    ): boolean {
+    protected evaluateContactWithPolygon(polygon: Polygon, out_contact: Collider.Contact): boolean {
       const closestVerIdx = Geometry.Polygon.getClosestVertexIndexToPoint(
         this.center,
         polygon._vertices,
@@ -217,7 +232,7 @@ export namespace Collider {
       )
     }
 
-    private setContactPointsWithPolygon(B: Polygon, out_contact: Collision.Contact) {
+    private setContactPointsWithPolygon(B: Polygon, out_contact: Collider.Contact) {
       const edge = Geometry.Polygon.getEdgeAcrossNormal(
         B._vertices,
         out_contact.normal.multiplyScalar(-1),
@@ -253,20 +268,20 @@ export namespace Collider {
       return Geometry.Polygon.projectionRange(this._vertices, axis)
     }
 
-    findContactWithCircle(B: Circle, includePoints: boolean): Collision.Contact | undefined {
+    findContactWithCircle(B: Circle, includePoints: boolean): Collider.Contact | undefined {
       const contact = B.findContactWithPolygon(this, includePoints)
       contact?.normal.multiplyScalar(-1, contact.normal)
 
       return contact
     }
 
-    findContactWithPolygon(B: Polygon, includePoints: boolean): Collision.Contact | undefined {
-      const contact: Collision.Contact = { depth: Infinity, normal: new Vector() }
+    findContactWithPolygon(B: Polygon, includePoints: boolean): Collider.Contact | undefined {
+      const contact: Collider.Contact = { depth: Infinity, normal: new Vector() }
       if (!this.evaluateContact(B, contact) || !B.evaluateContact(this, contact)) {
         return
       }
 
-      Collision.correctDirectionIfNeeded(this, B, contact)
+      this.correctContactDirectionIfNeeded(B, contact)
 
       if (includePoints) {
         this.setContactPointsWithPolygon(B, contact)
@@ -274,7 +289,7 @@ export namespace Collider {
       return contact
     }
 
-    evaluateContact(B: Collider, out_contact: Collision.Contact): boolean {
+    evaluateContact(B: Collider, out_contact: Collider.Contact): boolean {
       const axis = new Vector()
 
       for (let i = 0; i < this._vertices.length; i++) {
@@ -294,7 +309,7 @@ export namespace Collider {
       return true
     }
 
-    private setContactPointsWithPolygon(B: Polygon, out_contact: Collision.Contact) {
+    private setContactPointsWithPolygon(B: Polygon, out_contact: Contact) {
       const edgeA = Geometry.Polygon.getEdgeAcrossNormal(this._vertices, out_contact.normal)
       const edgeB = Geometry.Polygon.getEdgeAcrossNormal(
         B._vertices,
@@ -319,7 +334,7 @@ export namespace Collider {
       axis.multiplyScalar(-1, axis)
       incEdge.projectAndClipByMargin(axis, axis.dot(refEdge.b))
 
-      const cps: Collision.ContactPoint[] = []
+      const cps: ContactPoint[] = []
       const refN = axis.crossScalar(-1)
       const aRefProj = refN.dot(refEdge.a)
       let depth = aRefProj - refN.dot(incEdge.a)

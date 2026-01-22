@@ -27,11 +27,12 @@ export class CollisionSensorSystem<Cs extends Components, Ss extends Signals> ex
     const sensors = stage._collisionSensors
     const bodies = stage._bodies
     let entity: Entity<Cs>
+    let contact: Collider.Contact | undefined
 
     for (let i = 0; i < sensors.length; i++) {
       const [idA, A] = sensors[i]!
 
-      A.collidedIds.clear()
+      A.collisions.clear()
 
       entity = stage.getEntity(idA)!
       A.collider.updateTransform(entity.position, entity.rotation, entity.scale.x)
@@ -42,27 +43,31 @@ export class CollisionSensorSystem<Cs extends Components, Ss extends Signals> ex
         entity = stage.getEntity(idB)!
         B.collider.updateTransform(entity.position, entity.rotation, entity.scale.x)
 
-        if (this.isTrigger(A.collider, B.collider)) {
-          A.collidedIds.add(idB)
-          B.collidedIds.add(idA)
+        contact = this.findContact(A.collider, B.collider)
+        if (contact) {
+          A.collisions.set(idB, Collision.instance(idB, contact, true))
+          B.collisions.set(idA, Collision.instance(idA, contact, false))
         }
       }
       for (let k = 0; k < bodies.length; k++) {
         const [idC, C] = bodies[k]!
 
-        if (this.isTrigger(A.collider, C.collider)) {
-          A.collidedIds.add(idC)
-          C.collidedIds.add(idA)
+        contact = this.findContact(A.collider, C.collider)
+        if (contact) {
+          A.collisions.set(idC, Collision.instance(idC, contact, true))
+          C.collisions.set(idA, Collision.instance(idA, contact, false))
         }
       }
     }
   }
 
-  private isTrigger(A: Collider, B: Collider): boolean {
-    return (
-      Collision.canCollide(A.layer, B.layer, this.options.collisionLayerMap) &&
-      ((this.options.usesOnlyAABBIntersectionForCollisionDetection && A.hasAABBIntersection(B)) ||
-        A.findContact(B, false) != undefined)
-    )
+  private findContact(A: Collider, B: Collider): Collider.Contact | undefined {
+    if (
+      !Collider.canCollide(A, B, this.options.collisionLayerMap) ||
+      (this.options.usesOnlyAABBIntersectionForCollisionDetection && !A.hasAABBIntersection(B))
+    ) {
+      return
+    }
+    return A.findContact(B, false)
   }
 }

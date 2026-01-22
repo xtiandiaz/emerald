@@ -140,8 +140,8 @@ export namespace Debug {
       }
     }
 
-    drawCollision(collision: Collision) {
-      for (const cp of collision.points) {
+    drawCollisionContact(contact: Collision.Contact) {
+      for (const cp of contact.points) {
         this.circle(cp.point.x, cp.point.y, 5).stroke({ color: 0xffffff, width: 2 })
       }
     }
