@@ -45,7 +45,6 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Sy
     const bodies = stage._bodies
     const separation = new Vector()
     const collisions: Collision[] = []
-    // const vectorOne = new Vector(1, 1)
     let contact: Collision.Contact | undefined
     let collision: Collision | undefined
     let entity: Entity<Cs>
@@ -79,7 +78,13 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Sy
         for (let j = i + 1; j < bodies.length; j++) {
           const [idB, B] = bodies[j]!
 
-          if (!Collision.canCollide(A.layer, B.layer, this.options.collisionLayerMap)) {
+          if (
+            !Collision.canCollide(
+              A.collider.layer,
+              B.collider.layer,
+              this.options.collisionLayerMap,
+            )
+          ) {
             continue
           }
           contact = A.collider.findContact(B.collider, true)

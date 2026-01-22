@@ -7,11 +7,11 @@ export class Stage<Cs extends Components> extends Container {
   readonly _collisionSensors: EntityComponent<CollisionSensor>[] = []
 
   private nextEntityId = 1
-  private tagMap = new Map<number, string>()
-  private taggedIds = new Map<string, number[]>()
-  private idToEntityMap = new Map<number, Entity<Cs>>()
-  private typeToEntityMap = new Map<string, Entity<Cs>>()
-  private entityIdToComponentsMap = new Map<number, Map<keyof Cs, Cs[keyof Cs]>>()
+  private id2TagMap = new Map<number, string>()
+  private tag2IdsMap = new Map<string, number[]>()
+  private id2EntityMap = new Map<number, Entity<Cs>>()
+  private type2EntityMap = new Map<string, Entity<Cs>>()
+  private id2ComponentsMap = new Map<number, Map<keyof Cs, Cs[keyof Cs]>>()
   private renderLayers = new Map(
     [Stage.Layer.ENTITIES, Stage.Layer.UI, Stage.Layer.DEBUG].map((key) => [
       key,
@@ -35,16 +35,15 @@ export class Stage<Cs extends Components> extends Container {
       id,
       (key) => this.hasComponent(key, id),
       (key) => this.getComponent(key, id),
-      (entry0, entry1, entry2, entry3, entry4) =>
-        this.addComponent(id, entry0, entry1, entry2, entry3, entry4)!,
+      (entries) => this.addComponents(id, entries)!,
       (key) => this.removeComponent(key, id),
       (tag) => this.tag(id, tag)!,
       () => this.getEntityTag(id),
     )
 
-    this.idToEntityMap.set(id, entity)
-    this.typeToEntityMap.set(type.name, entity)
-    this.entityIdToComponentsMap.set(id, new Map())
+    this.id2EntityMap.set(id, entity)
+    this.type2EntityMap.set(type.name, entity)
+    this.id2ComponentsMap.set(id, new Map())
 
     entity.init()
 
@@ -57,75 +56,79 @@ export class Stage<Cs extends Components> extends Container {
   createSimpleEntity(options?: Partial<SimpleEntity.Options>): SimpleEntity<Cs> {
     const entity = this.createEntity(SimpleEntity<Cs>)
 
+    if (options?.tag) this.tag(entity.id, options.tag)
     if (options?.children) entity.addChild(...options.children)
     if (options?.position) entity.position = options.position
-    if (options?.tag) this.tag(entity.id, options.tag)
+    if (options?.rotation) entity.rotation = options.rotation
 
     return entity
   }
 
   hasEntity(id: number): boolean {
-    return this.entityIdToComponentsMap.has(id)
+    return this.id2ComponentsMap.has(id)
+  }
+
+  hasEntitiesByTag(tag: string): boolean {
+    return (this.tag2IdsMap.get(tag)?.length ?? 0) > 0
   }
 
   getEntity<T extends Entity<Cs>>(id: number): T | undefined {
-    return this.idToEntityMap.get(id) as T
+    return this.id2EntityMap.get(id) as T
   }
 
   getEntityByType<T extends Entity<Cs>>(type: EntityConstructor<Cs, T>): T | undefined {
-    return this.typeToEntityMap.get(type.name) as T
+    return this.type2EntityMap.get(type.name) as T
   }
 
   getFirstEntityByTag(tag: string): Entity<Cs> | undefined {
-    const id = this.taggedIds.get(tag)?.[0]
-    if (id) {
-      return this.idToEntityMap.get(id)
-    }
+    const id = this.tag2IdsMap.get(tag)?.[0]
+    if (id) return this.id2EntityMap.get(id)
+
     return undefined
   }
 
-  getTaggedIds(tag: string): number[] | undefined {
-    return this.taggedIds.get(tag)
-  }
-
   getEntitiesByTag(tag: string): Entity<Cs>[] {
-    return this.taggedIds.get(tag)?.map((id) => this.idToEntityMap.get(id)!) ?? []
+    return this.tag2IdsMap.get(tag)?.map((id) => this.id2EntityMap.get(id)!) ?? []
   }
 
   tag(entityId: number, tag: string): Entity<Cs> | undefined {
-    const entity = this.idToEntityMap.get(entityId)
+    const entity = this.id2EntityMap.get(entityId)
     if (!entity) {
       return
     }
-    const prevTag = this.tagMap.get(entityId)
+    const prevTag = this.id2TagMap.get(entityId)
     if (prevTag) {
       this.deleteTaggedId(tag, entityId)
     }
-    this.tagMap.set(entityId, tag)
-    if (this.taggedIds.has(tag)) {
-      this.taggedIds.get(tag)!.push(entityId)
+    this.id2TagMap.set(entityId, tag)
+    if (this.tag2IdsMap.has(tag)) {
+      this.tag2IdsMap.get(tag)!.push(entityId)
     } else {
-      this.taggedIds.set(tag, [entityId])
+      this.tag2IdsMap.set(tag, [entityId])
     }
 
     return entity
   }
 
   getEntityTag(id: number): string | undefined {
-    return this.tagMap.get(id)
+    return this.id2TagMap.get(id)
+  }
+
+  getTaggedIds(tag: string): number[] | undefined {
+    return this.tag2IdsMap.get(tag)
   }
 
   hasComponent<K extends keyof Cs>(key: K, entityId: number): boolean {
-    return this.entityIdToComponentsMap.get(entityId)?.has(key) ?? false
+    return this.id2ComponentsMap.get(entityId)?.has(key) ?? false
   }
 
   getComponent<K extends keyof Cs>(key: K, entityId: number): Cs[K] | undefined {
-    return this.entityIdToComponentsMap.get(entityId)?.get(key) as Cs[K]
+    return this.id2ComponentsMap.get(entityId)?.get(key) as Cs[K]
   }
 
   getAllComponents<K extends keyof Cs>(key: K): Cs[K][] {
     const components: Cs[K][] = []
-    this.entityIdToComponentsMap.forEach((cMap) => {
+    this.id2ComponentsMap.forEach((cMap) => {
       if (cMap.has(key)) {
         components.push(cMap.get(key)! as Cs[K])
       }
@@ -133,36 +136,22 @@ export class Stage<Cs extends Components> extends Container {
     return components
   }
 
-  addComponent<
-    K0 extends keyof Cs,
-    K1 extends keyof Cs,
-    K2 extends keyof Cs,
-    K3 extends keyof Cs,
-    K4 extends keyof Cs,
-  >(
-    entityId: number,
-    entry0: [K0, Cs[K0]],
-    entry1?: [K1, Cs[K1]],
-    entry2?: [K2, Cs[K2]],
-    entry3?: [K3, Cs[K3]],
-    entry4?: [K4, Cs[K4]],
-  ): Cs[K0] | undefined {
-    const cMap = this.entityIdToComponentsMap.get(entityId)!
+  addComponents(entityId: number, components: Partial<Cs>): Entity<Cs> | undefined {
+    const cMap = this.id2ComponentsMap.get(entityId)!
     if (!cMap) {
       console.error('Undefined entity', entityId)
       return
     }
-    this.setComponentEntry(entityId, entry0, cMap)
-    if (entry1) this.setComponentEntry(entityId, entry1, cMap)
-    if (entry2) this.setComponentEntry(entityId, entry2, cMap)
-    if (entry3) this.setComponentEntry(entityId, entry3, cMap)
-    if (entry4) this.setComponentEntry(entityId, entry4, cMap)
+    const entries = Object.entries(components) as [keyof Cs, Cs[keyof Cs]][]
+    for (const entry of entries) {
+      this.setComponentEntry(entityId, entry, cMap)
+    }
 
-    return entry0[1]
+    return this.id2EntityMap.get(entityId)!
   }
 
   removeComponent<K extends keyof Cs>(key: K, entityId: number): boolean {
-    const c2typeMap = this.entityIdToComponentsMap.get(entityId)
+    const c2typeMap = this.id2ComponentsMap.get(entityId)
     if (!c2typeMap) {
       console.error('Undefined entity', entityId)
       return false
@@ -179,21 +168,21 @@ export class Stage<Cs extends Components> extends Container {
   }
 
   removeEntity(id: number) {
-    const entity = this.idToEntityMap.get(id)
+    const entity = this.id2EntityMap.get(id)
     if (!entity) {
       return
     }
     this.removeChild(entity)
-    this.idToEntityMap.delete(id)
-    this.entityIdToComponentsMap.delete(id)
+    this.id2EntityMap.delete(id)
+    this.id2ComponentsMap.delete(id)
 
     this.deleteBodyEntry(id)
     this.deleteCollisionSensorEntry(id)
 
-    const tag = this.tagMap.get(id)
+    const tag = this.id2TagMap.get(id)
     if (tag) {
       this.deleteTaggedId(tag, id)
-      this.tagMap.delete(id)
+      this.id2TagMap.delete(id)
     }
   }
 
@@ -229,7 +218,7 @@ export class Stage<Cs extends Components> extends Container {
   }
 
   private deleteTaggedId(tag: string, entityId: number) {
-    const taggedIds = this.taggedIds.get(tag)!
+    const taggedIds = this.tag2IdsMap.get(tag)!
     const index = taggedIds.findIndex((id) => id == entityId)
     if (index >= 0) {
       taggedIds.splice(index)

@@ -119,20 +119,22 @@ export namespace Debug {
 
   export class Graphics extends PixiGraphics {
     drawCollider(collider: Collider) {
-      if (collider.collider instanceof Collider.Circle) {
-        const r = collider.collider.radius
-        const center = collider.collider.center
+      collider.updateVerticesIfNeeded()
+
+      if (collider instanceof Collider.Circle) {
+        const r = collider.radius
+        const center = collider.center
         this.circle(center.x, center.y, r)
           .fill({ color: Color.COLLIDER, alpha: 0.5 })
           .stroke({ color: Color.COLLIDER, width: 2 })
           .moveTo(center.x, center.y)
           .lineTo(
-            center.x + r * Math.cos(collider.collider._transform.rotation),
-            center.y + r * Math.sin(collider.collider._transform.rotation),
+            center.x + r * Math.cos(collider._transform.rotation),
+            center.y + r * Math.sin(collider._transform.rotation),
           )
           .stroke({ color: Color.COLLIDER, width: 2 })
-      } else if (collider.collider instanceof Collider.Polygon) {
-        this.poly(collider.collider.vertices)
+      } else if (collider instanceof Collider.Polygon) {
+        this.poly(collider._vertices)
           .fill({ color: Color.COLLIDER, alpha: 0.5 })
           .stroke({ color: Color.COLLIDER, width: 2 })
       }

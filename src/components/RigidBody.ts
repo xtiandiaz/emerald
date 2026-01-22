@@ -1,7 +1,8 @@
 import { Transform, Point, type PointData } from 'pixi.js'
-import { Vector, Component, clamp01, type VectorData } from '../core'
+import { Vector, Component, type VectorData } from '../core'
 import { Collider } from '../collision'
 import { Physics } from '../physics'
+import { EMath } from '../extras'
 
 export class RigidBody implements Component {
   readonly collidedIds = new Set<number>()
@@ -43,6 +44,10 @@ export class RigidBody implements Component {
     return this._transform.scale.x
   }
 
+  get direction(): Vector {
+    return new Vector(Math.cos(this.rotation), Math.sin(this.rotation))
+  }
+
   constructor(
     public readonly collider: Collider,
     options?: Partial<RigidBody.Options>,
@@ -59,38 +64,38 @@ export class RigidBody implements Component {
     this.inertia = this.isStatic ? 0 : collider._areaProperties.momentOfInertia
     this.invInertia = this.inertia > 0 ? 1 / this.inertia : 0
 
-    if (options?.restitution) this.setRestitution(options?.restitution)
+    if (options?.restitution != undefined) this.setRestitution(options?.restitution)
     if (options?.friction) this.setFriction(options.friction)
 
     if (options?.drag) this.setDrag(options.drag)
-    if (options?.angularDrag) this.setAngularDrag(options.angularDrag)
+    if (options?.angularDrag != undefined) this.setAngularDrag(options.angularDrag)
 
     if (options?.initialPosition) this._transform.position.copyFrom(options.initialPosition)
     if (options?.initialRotation) this._transform.rotation = options.initialRotation
-    if (options?.initialScale) this._transform.scale.x = options.initialScale
+    if (options?.initialScale != undefined) this._transform.scale.x = options.initialScale
 
     if (options?.initialVelocity) this.velocity.copyFrom(options.initialVelocity)
     if (options?.initialAngularVelocity) this.angularVelocity = options.initialAngularVelocity
   }
 
   setRestitution(value: number) {
-    this._restitution = clamp01(value)
+    this._restitution = EMath.clamp01(value)
   }
 
   setFriction(value: Partial<Physics.Friction>) {
-    const adjustValue = (val: number) => clamp01(val)
-    if (value.static) this._friction.static = adjustValue(value.static)
-    if (value.dynamic) this._friction.dynamic = adjustValue(value.dynamic)
+    const adjustValue = (val: number) => EMath.clamp01(val)
+    if (value.static != undefined) this._friction.static = adjustValue(value.static)
+    if (value.dynamic != undefined) this._friction.dynamic = adjustValue(value.dynamic)
   }
 
   setDrag(value: Partial<VectorData>) {
-    const adjustValue = (val: number) => Math.pow(clamp01(val), 4)
-    if (value.x) this._drag.x = adjustValue(value.x)
-    if (value.y) this._drag.y = adjustValue(value.y)
+    const adjustValue = (val: number) => Math.pow(EMath.clamp01(val), 4)
+    if (value.x != undefined) this._drag.x = adjustValue(value.x)
+    if (value.y != undefined) this._drag.y = adjustValue(value.y)
   }
 
   setAngularDrag(value: number) {
-    this._angularDrag = Math.pow(clamp01(value), 4)
+    this._angularDrag = Math.pow(EMath.clamp01(value), 4)
   }
 
   applyForce(force: PointData, position?: PointData) {

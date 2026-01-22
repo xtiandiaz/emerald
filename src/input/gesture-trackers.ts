@@ -2,7 +2,7 @@ import { type Container, type FederatedPointerEvent } from 'pixi.js'
 import type { Disconnectable } from '../core'
 import type { Gesture, TapGesture, DragGesture, SwipeGesture } from './gestures'
 import { GesturePhase, PointerEventKey } from './types'
-import { distanceSquared, duration } from '../core/utils'
+// import { distanceSquared, duration } from '../core/utils'
 import { Input } from './Input'
 
 export abstract class GestureTracker<T extends Gesture, U> {

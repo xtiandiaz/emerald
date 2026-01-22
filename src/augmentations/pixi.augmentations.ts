@@ -1,6 +1,7 @@
 import { ObservablePoint, Point, type PointData } from 'pixi.js'
-import { clamp, Vector, VectorData } from '../core'
+import { Vector, VectorData } from '../core'
 import 'pixi.js/math-extras'
+import { EMath } from '../extras'
 
 declare global {
   interface Vector2Math {
@@ -23,8 +24,8 @@ Point.prototype.clamp = ObservablePoint.prototype.clamp = function <T extends Po
   out_point?: T,
 ): T {
   out_point ??= new Point() as PointData as T
-  out_point.x = clamp(this.x, min.x, max.x)
-  out_point.y = clamp(this.y, min.y, max.y)
+  out_point.x = EMath.clamp(this.x, min.x, max.x)
+  out_point.y = EMath.clamp(this.y, min.y, max.y)
 
   return out_point
 }
@@ -33,8 +34,8 @@ Point.prototype.clampScalar = ObservablePoint.prototype.clampScalar = function <
   T extends PointData = Point,
 >(this, min: number, max: number, out_point?: T): T {
   out_point ??= new Point() as PointData as T
-  out_point.x = clamp(this.x, min, max)
-  out_point.y = clamp(this.y, min, max)
+  out_point.x = EMath.clamp(this.x, min, max)
+  out_point.y = EMath.clamp(this.y, min, max)
 
   return out_point
 }
