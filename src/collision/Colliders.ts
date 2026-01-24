@@ -1,170 +1,24 @@
-import { Point, Transform, type PointData } from 'pixi.js'
-import { Vector, type Range, type VectorData } from '../core'
+import { Vector, Range, VectorData } from '../core'
+import { Collider } from '../components'
 import { Geometry } from '../geometry'
-import { Collision } from '../collision'
 import { EMath } from '../extras'
+import { Point } from 'pixi.js'
 
-export abstract class Collider {
-  layer = 1
-
-  abstract readonly _areaProperties: Geometry.AreaProperties
-  readonly _vertices: Point[]
-  readonly _transform: Transform
-  private shouldUpdateVertices = true
-
-  get center(): Point {
-    return this._transform.position.add(this.centroid)
-  }
-  get position(): PointData {
-    return this._transform.position
-  }
-  protected get centroid(): Point {
-    return this._areaProperties.centroid
-  }
-
-  protected constructor(
-    protected readonly __vertices: Point[],
-    public readonly aabb: Geometry.AABB = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } },
-  ) {
-    this._vertices = __vertices.map((v) => v.clone())
-    this._transform = new Transform({
-      observer: {
-        _onUpdate: (_) => {
-          this.shouldUpdateVertices = true
-        },
-      },
-    })
-  }
-
-  static circle(radius: number, x: number = 0, y: number = 0) {
-    return new Collider.Circle(radius, x, y)
-  }
-
-  static rectangle(width: number, height: number, x?: number, y?: number) {
-    x ??= -width / 2
-    y ??= -height / 2
-
-    return new Collider.Polygon([
-      new Point(x, y),
-      new Point(x + width, y),
-      new Point(x + width, y + height),
-      new Point(x, y + height),
-    ])
-  }
-
-  static regularPolygon(radius: number, sides: number) {
-    return new Collider.Polygon(Geometry.Polygon.createRegularPolygonVertices(radius, sides))
-  }
-
-  static polygon(vertices: Point[]) {
-    return new Collider.Polygon(vertices)
-  }
-
-  updateTransform(position: PointData, rotation: number, scale: number) {
-    this._transform.position.copyFrom(position)
-    this._transform.rotation = rotation
-    this._transform.scale.set(scale)
-  }
-
-  updateVerticesIfNeeded() {
-    if (this.shouldUpdateVertices) {
-      this.updateVertices()
-    }
-    this.shouldUpdateVertices = false
-  }
-
-  hasAABBIntersection(B: Collider): boolean {
-    this.updateVerticesIfNeeded()
-    B.updateVerticesIfNeeded()
-
-    return Geometry.isAABBIntersection(this.aabb, B.aabb)
-  }
-
-  findContact(B: Collider, includePoints: boolean = false): Collider.Contact | undefined {
-    this.updateVerticesIfNeeded()
-    B.updateVerticesIfNeeded()
-
-    if (!this.hasAABBIntersection(B)) {
-      return
-    }
-
-    let contact: Collider.Contact | undefined
-    if (B instanceof Collider.Circle) {
-      contact = this.findContactWithCircle(B, includePoints)
-    } else if (B instanceof Collider.Polygon) {
-      contact = this.findContactWithPolygon(B, includePoints)
-    }
-
-    return contact
-  }
-
-  abstract getProjectionRange(axis: Vector): Range
-
-  abstract findContactWithCircle(
-    B: Collider.Circle,
-    includePoints: boolean,
-  ): Collider.Contact | undefined
-  abstract findContactWithPolygon(
-    B: Collider.Polygon,
-    includePoints: boolean,
-  ): Collider.Contact | undefined
-
-  protected updateVertices() {
-    let minX = Infinity
-    let maxX = -Infinity
-    let minY = Infinity
-    let maxY = -Infinity
-
-    for (let i = 0; i < this.__vertices.length; i++) {
-      const v = this._vertices[i]!
-      this._transform.matrix.apply(this.__vertices[i]!, v)
-
-      minX = Math.min(minX, v.x)
-      maxX = Math.max(maxX, v.x)
-      minY = Math.min(minY, v.y)
-      maxY = Math.max(maxY, v.y)
-    }
-    this.aabb.min.x = minX
-    this.aabb.min.y = minY
-    this.aabb.max.x = maxX
-    this.aabb.max.y = maxY
-  }
-
-  protected correctContactDirectionIfNeeded(B: Collider, out_contact: Collider.Contact) {
-    if (B.center.subtract(this.center).dot(out_contact.normal) < 0) {
-      out_contact.normal.multiplyScalar(-1, out_contact.normal)
-    }
-  }
-}
-
-export namespace Collider {
-  export interface ContactPoint {
-    point: Point
-    depth: number
-  }
-  export interface Contact extends Geometry.ProjectionOverlap {
-    points?: ContactPoint[]
-  }
-
-  export function canCollide(A: Collider, B: Collider, map?: Collision.LayerMap): boolean {
-    return !map || (((map.get(A.layer) ?? 0) & B.layer) | ((map.get(B.layer) ?? 0) & A.layer)) != 0
-  }
-
+export namespace Colliders {
   export class Circle extends Collider {
     readonly _areaProperties: Geometry.AreaProperties
 
-    get radius(): number {
-      return this._radius * this._transform.scale.x
-    }
-
     constructor(
       private readonly _radius: number,
-      x: number = 0,
-      y: number = 0,
+      options?: Partial<Collider.Options>,
     ) {
-      super([])
+      super([], options)
 
-      this._areaProperties = Geometry.Circle.areaProperties(x, y, _radius)
+      this._areaProperties = Geometry.Circle.areaProperties(_radius, 1, options?.localOffset)
+    }
+
+    get radius(): number {
+      return this._radius * this._transform.scale.x
     }
 
     getProjectionRange(axis: Vector): Range {
@@ -209,10 +63,10 @@ export namespace Collider {
     }
 
     protected updateVertices(): void {
-      this.aabb.min.x = this.position.x - this.radius
-      this.aabb.min.y = this.position.y - this.radius
-      this.aabb.max.x = this.position.x + this.radius
-      this.aabb.max.y = this.position.y + this.radius
+      this._aabb.min.x = this._transform.position.x - this.radius
+      this._aabb.min.y = this._transform.position.y - this.radius
+      this._aabb.max.x = this._transform.position.x + this.radius
+      this._aabb.max.y = this._transform.position.y + this.radius
     }
 
     protected evaluateContactWithPolygon(polygon: Polygon, out_contact: Collider.Contact): boolean {
@@ -249,8 +103,8 @@ export namespace Collider {
   export class Polygon extends Collider {
     readonly _areaProperties: Geometry.AreaProperties
 
-    constructor(vertices: Point[]) {
-      super(vertices)
+    constructor(vertices: Point[], options?: Partial<Collider.Options>) {
+      super(vertices, options)
 
       this._areaProperties = Geometry.Polygon.areaProperties(vertices)
     }
@@ -309,7 +163,7 @@ export namespace Collider {
       return true
     }
 
-    private setContactPointsWithPolygon(B: Polygon, out_contact: Contact) {
+    private setContactPointsWithPolygon(B: Polygon, out_contact: Collider.Contact) {
       const edgeA = Geometry.Polygon.getEdgeAcrossNormal(this._vertices, out_contact.normal)
       const edgeB = Geometry.Polygon.getEdgeAcrossNormal(
         B._vertices,
@@ -334,7 +188,7 @@ export namespace Collider {
       axis.multiplyScalar(-1, axis)
       incEdge.projectAndClipByMargin(axis, axis.dot(refEdge.b))
 
-      const cps: ContactPoint[] = []
+      const cps: Collider.ContactPoint[] = []
       const refN = axis.crossScalar(-1)
       const aRefProj = refN.dot(refEdge.a)
       let depth = aRefProj - refN.dot(incEdge.a)

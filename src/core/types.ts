@@ -6,6 +6,9 @@ export interface Range {
   min: number
   max: number
 }
+export namespace Range {
+  export const point = (minAndMax: number) => ({ min: minAndMax, max: minAndMax })
+}
 
 export interface Component {}
 

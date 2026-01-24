@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js'
-import GSAP from 'gsap'
+import { gsap } from 'gsap'
 import PixiPlugin from 'gsap/PixiPlugin'
 
 // export type Ease = gsap.EaseString | gsap.EaseFunction
@@ -26,8 +26,8 @@ export class Tweener {
   private static sharedInstance?: Tweener
 
   constructor() {
-    GSAP.registerPlugin(PixiPlugin)
     PixiPlugin.registerPIXI(PIXI)
+    gsap.registerPlugin(PixiPlugin)
   }
 
   static get shared(): Tweener {
@@ -38,11 +38,11 @@ export class Tweener {
   }
 
   timeline(): gsap.core.Timeline {
-    return GSAP.timeline()
+    return gsap.timeline()
   }
 
   to(target: PIXI.Container, params: PixiTweenParams) {
-    return GSAP.to(target, { pixi: params.vars, startAt: { pixi: params.startVars }, ...params })
+    return gsap.to(target, { pixi: params.vars, startAt: { pixi: params.startVars } })
   }
 
   async toAsync(target: PIXI.Container, params: PixiTweenParams) {
@@ -56,6 +56,6 @@ export class Tweener {
   }
 
   killTweensOf(target: PIXI.Container) {
-    GSAP.killTweensOf(target)
+    gsap.killTweensOf(target)
   }
 }

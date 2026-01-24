@@ -2,12 +2,12 @@ import { Container, Text, Ticker, Graphics as PixiGraphics } from 'pixi.js'
 import type { Disconnectable, Stage } from '../core'
 import { Components } from '../components'
 import { Signals } from '../signals'
-import { Collider, Collision } from '../collision'
+import { Collider, Colliders, Collision } from '../collision'
 
 export namespace Debug {
   export namespace Options {
-    export interface PhysicsSystem {
-      rendersCollisions: boolean
+    export interface CollisionSystem {
+      rendersColliders: boolean
     }
     export interface Scene {
       showsStats: boolean
@@ -47,7 +47,7 @@ export namespace Debug {
   interface Stats {
     fps: number
     bodyCount: number
-    collisionSensorCount: number
+    colliderCount: number
     physicsIterations?: number
   }
 
@@ -61,7 +61,7 @@ export namespace Debug {
     private stats: Stats = {
       fps: 60,
       bodyCount: 0,
-      collisionSensorCount: 0,
+      colliderCount: 0,
     }
     private ticker = new Ticker()
     private connections: Disconnectable[] = []
@@ -83,8 +83,11 @@ export namespace Debug {
 
       this.ticker.add((_) => {
         const s = this.stats
-        s.bodyCount = stage._bodies.length
-        s.collisionSensorCount = stage._collisionSensors.length
+        s.colliderCount = stage._colliders.length
+        s.bodyCount = stage._colliders.reduce(
+          (count, c) => (stage.hasComponent('rigid-body', c[0]) ? count++ : count),
+          0,
+        )
 
         this._update()
       })
@@ -106,7 +109,7 @@ export namespace Debug {
       let string = ''
       string += `FPS: ${stats.fps}`
       string += `\nBodies: ${stats.bodyCount}`
-      string += `\nCollision sensors: ${stats.collisionSensorCount}`
+      string += `\nCollision sensors: ${stats.colliderCount}`
       if (stats.physicsIterations) string += `\nPhysics iterations: ${stats.physicsIterations}`
 
       this.text.text = string
@@ -121,7 +124,7 @@ export namespace Debug {
     drawCollider(collider: Collider) {
       collider.updateVerticesIfNeeded()
 
-      if (collider instanceof Collider.Circle) {
+      if (collider instanceof Colliders.Circle) {
         const r = collider.radius
         const center = collider.center
         this.circle(center.x, center.y, r)
@@ -133,7 +136,7 @@ export namespace Debug {
             center.y + r * Math.sin(collider._transform.rotation),
           )
           .stroke({ color: Color.COLLIDER, width: 2 })
-      } else if (collider instanceof Collider.Polygon) {
+      } else if (collider instanceof Colliders.Polygon) {
         this.poly(collider._vertices)
           .fill({ color: Color.COLLIDER, alpha: 0.5 })
           .stroke({ color: Color.COLLIDER, width: 2 })

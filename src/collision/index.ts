@@ -1,2 +1,2 @@
 export * from './Collision'
-export * from './Collider'
+export * from './Colliders'

@@ -2,15 +2,12 @@ import { Point, type PointData } from 'pixi.js'
 import type { Vector, Range, VectorData } from '../core/types'
 import { EMath } from '../extras'
 import '../augmentations/pixi.augmentations'
+import { Physics } from '../physics'
 
 export namespace Geometry {
   export class Segment {
     get vector(): Vector {
       return this.b.subtract(this.a)
-    }
-
-    get magnitudeSqrd(): number {
-      return this.vector.magnitudeSquared()
     }
 
     constructor(
@@ -32,9 +29,10 @@ export namespace Geometry {
     getClosestPoint(to: Point, out_closestPoint?: Point): Point {
       const targetVector = to.subtract(this.a)
       out_closestPoint ??= new Point()
+      const vector = this.vector
 
       return this.getPointAtNormalizedDistance(
-        targetVector.dot(this.vector) / this.magnitudeSqrd,
+        targetVector.dot(vector) / vector.magnitudeSquared(),
         out_closestPoint,
       )
     }
@@ -91,11 +89,8 @@ export namespace Geometry {
   }
 
   export interface AreaProperties {
-    // As per Area Density: https://en.wikipedia.org/wiki/Area_density
-    mass: number
-    // As per Second Moment of Inertia: https://en.wikipedia.org/wiki/Second_moment_of_area
-    momentOfInertia: number
     centroid: Point
+    physics: Physics.AreaProperties
   }
 
   export namespace Circle {
@@ -111,18 +106,19 @@ export namespace Geometry {
     }
 
     export const areaProperties = (
-      x: number,
-      y: number,
       radius: number,
       density: number = 1,
+      localOffset?: PointData,
     ): AreaProperties => {
       const area = Circle.area(radius)
       return {
-        mass: area * density,
-        // Listed in: https://en.wikipedia.org/wiki/List_of_second_moments_of_area
-        // where PI * r^4 / 2 = area * r^2 / 2
-        momentOfInertia: (area * radius * radius) / 2,
-        centroid: new Point(x, y),
+        centroid: new Point(localOffset?.x, localOffset?.y),
+        physics: {
+          mass: area * density,
+          // Listed in: https://en.wikipedia.org/wiki/List_of_second_moments_of_area
+          // where PI * r^4 / 2 = area * r^2 / 2
+          momentOfInertia: (area * radius * radius) / 2,
+        },
       }
     }
   }
@@ -174,9 +170,11 @@ export namespace Geometry {
       momentOfInertia -= mass * centroid.dot(centroid)
 
       return {
-        mass,
-        momentOfInertia,
         centroid,
+        physics: {
+          mass,
+          momentOfInertia,
+        },
       }
     }
 

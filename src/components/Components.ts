@@ -1,7 +1,9 @@
-import { CollisionSensor } from './CollisionSensor'
+import { Collider } from './Collider'
+import { RayCast } from './RayCast'
 import { RigidBody } from './RigidBody'
 
 export interface Components {
-  'collision-sensor': CollisionSensor
+  collider: Collider
+  'ray-cast': RayCast
   'rigid-body': RigidBody
 }

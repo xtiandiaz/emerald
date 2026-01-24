@@ -3,8 +3,9 @@ import { Signal } from './'
 import { Debug } from '../debug'
 
 export interface Signals {
+  'entity-added': Signal.EntityAdded
   'screen-resized': Signal.ScreenResized
-  // Debug ⬇️
+  // Debug
   'debug-physics-enabled': Debug.Signal.PhysicsEnabled
 }
 

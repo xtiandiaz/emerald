@@ -1,2 +1,2 @@
+export * from './CollisionSystem'
 export * from './PhysicsSystem'
-export * from './CollisionSensorSystem'

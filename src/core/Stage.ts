@@ -1,10 +1,9 @@
 import { Container, RenderLayer } from 'pixi.js'
 import { Entity, SimpleEntity, type EntityComponent, type EntityConstructor } from './'
-import { RigidBody, CollisionSensor, Components } from '../components'
+import { Collider, Components, RigidBody } from '../components'
 
 export class Stage<Cs extends Components> extends Container {
-  readonly _bodies: EntityComponent<RigidBody>[] = []
-  readonly _collisionSensors: EntityComponent<CollisionSensor>[] = []
+  readonly _colliders: EntityComponent<Collider>[] = []
 
   private nextEntityId = 1
   private id2TagMap = new Map<number, string>()
@@ -57,9 +56,15 @@ export class Stage<Cs extends Components> extends Container {
     const entity = this.createEntity(SimpleEntity<Cs>)
 
     if (options?.tag) this.tag(entity.id, options.tag)
-    if (options?.children) entity.addChild(...options.children)
     if (options?.position) entity.position = options.position
     if (options?.rotation) entity.rotation = options.rotation
+    if (options?.scale)
+      typeof options.scale == 'number'
+        ? entity.scale.set(options.scale)
+        : entity.scale.copyFrom(options.scale)
+    if (options?.children) entity.addChild(...options.children)
+
+    options?.onInit?.(entity)
 
     return entity
   }
@@ -82,9 +87,8 @@ export class Stage<Cs extends Components> extends Container {
 
   getFirstEntityByTag(tag: string): Entity<Cs> | undefined {
     const id = this.tag2IdsMap.get(tag)?.[0]
-    if (id) return this.id2EntityMap.get(id)
 
-    return undefined
+    return id ? this.id2EntityMap.get(id) : undefined
   }
 
   getEntitiesByTag(tag: string): Entity<Cs>[] {
@@ -126,7 +130,7 @@ export class Stage<Cs extends Components> extends Container {
     return this.id2ComponentsMap.get(entityId)?.get(key) as Cs[K]
   }
 
-  getAllComponents<K extends keyof Cs>(key: K): Cs[K][] {
+  getComponents<K extends keyof Cs>(key: K): Cs[K][] {
     const components: Cs[K][] = []
     this.id2ComponentsMap.forEach((cMap) => {
       if (cMap.has(key)) {
@@ -137,14 +141,17 @@ export class Stage<Cs extends Components> extends Container {
   }
 
   addComponents(entityId: number, components: Partial<Cs>): Entity<Cs> | undefined {
-    const cMap = this.id2ComponentsMap.get(entityId)!
-    if (!cMap) {
+    const entity = this.id2EntityMap.get(entityId)
+    if (!entity) {
       console.error('Undefined entity', entityId)
       return
     }
+    const componentsMap = this.id2ComponentsMap.get(entityId)!
     const entries = Object.entries(components) as [keyof Cs, Cs[keyof Cs]][]
-    for (const entry of entries) {
-      this.setComponentEntry(entityId, entry, cMap)
+    for (const [key, component] of entries) {
+      componentsMap.set(key, component)
+
+      this.onComponentAdded(key, component, entity)
     }
 
     return this.id2EntityMap.get(entityId)!
@@ -157,11 +164,9 @@ export class Stage<Cs extends Components> extends Container {
       return false
     }
 
-    const c = c2typeMap.get(key)
-    if (c instanceof CollisionSensor) {
-      this.deleteCollisionSensorEntry(entityId)
-    } else if (c instanceof RigidBody) {
-      this.deleteBodyEntry(entityId)
+    const component = c2typeMap.get(key)
+    if (component instanceof Collider) {
+      this.deleteColliderEntry(entityId)
     }
 
     return c2typeMap.delete(key)
@@ -176,45 +181,13 @@ export class Stage<Cs extends Components> extends Container {
     this.id2EntityMap.delete(id)
     this.id2ComponentsMap.delete(id)
 
-    this.deleteBodyEntry(id)
-    this.deleteCollisionSensorEntry(id)
+    this.deleteColliderEntry(id)
 
     const tag = this.id2TagMap.get(id)
     if (tag) {
       this.deleteTaggedId(tag, id)
       this.id2TagMap.delete(id)
     }
-  }
-
-  private setComponentEntry<K extends keyof Cs>(
-    entityId: number,
-    entry: [K, Cs[K]],
-    map: Map<K, Cs[K]>,
-  ): Cs[K] | undefined {
-    const [key, component] = entry
-
-    map.set(key, component)
-
-    switch (key) {
-      case 'collision-sensor':
-        if (component instanceof CollisionSensor) this.resetCollisionSensor(component, entityId)
-        break
-      case 'rigid-body':
-        if (component instanceof RigidBody) this.resetBody(component, entityId)
-        break
-    }
-
-    return component
-  }
-
-  private resetBody(instance: RigidBody, entityId: number) {
-    this.deleteBodyEntry(entityId)
-    this._bodies.push([entityId, instance])
-  }
-
-  private resetCollisionSensor(instance: CollisionSensor, entityId: number) {
-    this.deleteCollisionSensorEntry(entityId)
-    this._collisionSensors.push([entityId, instance])
   }
 
   private deleteTaggedId(tag: string, entityId: number) {
@@ -225,17 +198,32 @@ export class Stage<Cs extends Components> extends Container {
     }
   }
 
-  private deleteBodyEntry(entityId: number) {
-    const bodyIndex = this._bodies.findIndex(([id]) => id == entityId)
-    if (bodyIndex >= 0) {
-      this._bodies.splice(bodyIndex, 1)
+  private resetColliderEntry(instance: Collider, entityId: number) {
+    this.deleteColliderEntry(entityId)
+    this._colliders.push([entityId, instance])
+  }
+
+  private deleteColliderEntry(entityId: number) {
+    const colliderIndex = this._colliders.findIndex(([id]) => id == entityId)
+    if (colliderIndex >= 0) {
+      this._colliders.splice(colliderIndex, 1)
     }
   }
 
-  private deleteCollisionSensorEntry(entityId: number) {
-    const collisionSensorIndex = this._collisionSensors.findIndex(([id]) => id == entityId)
-    if (collisionSensorIndex >= 0) {
-      this._collisionSensors.splice(collisionSensorIndex, 1)
+  private onComponentAdded<K extends keyof Cs>(key: K, component: Cs[K], entity: Entity<Cs>) {
+    if (component instanceof Collider) {
+      this.resetColliderEntry(component, entity.id)
+
+      this.getComponent('rigid-body', entity.id)?.resetAreaProperties(
+        component._areaProperties.physics,
+      )
+    } else if (component instanceof RigidBody) {
+      component._transform.setFromMatrix(entity.getGlobalTransform())
+
+      const collider = this.getComponent('collider', entity.id)
+      if (collider) {
+        component.resetAreaProperties(collider._areaProperties.physics)
+      }
     }
   }
 }

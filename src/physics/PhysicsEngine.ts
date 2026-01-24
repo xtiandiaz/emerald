@@ -1,8 +1,7 @@
 import type { Point } from 'pixi.js'
 import { Physics } from './'
-import { Vector } from '../core'
-import { RigidBody } from '../components'
-import { type Collision } from '../collision'
+import { Vector, VectorData } from '../core'
+import { RigidBody, Collider } from '../components'
 import { EMath } from '../extras'
 
 export class PhysicsEngine {
@@ -46,7 +45,7 @@ export class PhysicsEngine {
     body._transform.rotation += body.angularVelocity * PPM * dT
   }
 
-  separateBodies(A: RigidBody, B: RigidBody, depth: Vector) {
+  separateBodies(A: RigidBody, B: RigidBody, depth: VectorData) {
     if (A.isStatic) {
       B._transform.position.x += depth.x
       B._transform.position.y += depth.y
@@ -64,17 +63,23 @@ export class PhysicsEngine {
   /*  
     Collision Response: https://en.wikipedia.org/wiki/Collision_response#Impulse-based_reaction_model
   */
-  resolveCollision(contact: Collision.Contact) {
-    const A = contact.A
-    const B = contact.B
+  resolveCollision(A: RigidBody, B: RigidBody, contact: Collider.Contact) {
     const zeroVector = new Vector()
-    const pointCount = contact.points.length
+
     const coeffs = PhysicsEngine.getResolutionCoefficients(A, B)
     const sumInvMasses = A.invMass + B.invMass
-    const totalDepth = contact.points.reduce((acc, p) => (acc += p.depth), 0)
     const N = contact.normal
 
     this.clearImpulses()
+
+    this.separateBodies(A, B, contact.normal.multiplyScalar(contact.depth))
+
+    if (!contact.points) {
+      return
+    }
+
+    const pointCount = contact.points.length
+    const totalDepth = contact.points.reduce((acc, p) => (acc += p.depth), 0)
 
     for (let i = 0; i < pointCount; i++) {
       const cp = contact.points[i]!

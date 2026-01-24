@@ -1,4 +1,4 @@
-import { ContainerChild, ContainerEvents, RenderLayer, Sprite, Ticker } from 'pixi.js'
+import { ContainerChild, ContainerEvents, Sprite } from 'pixi.js'
 import { Stage, System, type Disconnectable } from '../core'
 import { Components } from '../components'
 import { Signals } from '../signals'

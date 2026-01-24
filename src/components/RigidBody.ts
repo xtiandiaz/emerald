@@ -1,11 +1,13 @@
 import { Transform, Point, type PointData } from 'pixi.js'
 import { Vector, Component, type VectorData } from '../core'
-import { Collider, Collision } from '../collision'
+import { Collision } from '../collision'
 import { Physics } from '../physics'
 import { EMath } from '../extras'
 
 export class RigidBody implements Component, Collision.Tracker {
   readonly collisions = new Map<number, Collision.Instance>()
+
+  readonly _transform = new Transform()
 
   isStatic: boolean
   isKinematic: boolean
@@ -25,12 +27,25 @@ export class RigidBody implements Component, Collision.Tracker {
     dynamic: 0.3,
   }
 
-  readonly mass: number
-  readonly invMass: number
-  readonly inertia: number
-  readonly invInertia: number
+  private _mass = 0
+  private _invMass = 0
+  private _inertia = 0
+  private _invInertia = 0
 
-  readonly _transform: Transform
+  constructor(options?: Partial<RigidBody.Options>) {
+    this.isStatic = options?.isStatic ?? false
+    this.isKinematic = options?.isKinematic ?? false
+
+    if (options?.restitution != undefined) this.setRestitution(options?.restitution)
+    if (options?.friction) this.setFriction(options.friction)
+
+    if (options?.drag) this.setDrag(options.drag)
+    if (options?.angularDrag != undefined) this.setAngularDrag(options.angularDrag)
+
+    if (options?.initialVelocity) this.velocity.copyFrom(options.initialVelocity)
+    if (options?.initialAngularVelocity) this.angularVelocity = options.initialAngularVelocity
+  }
+
   get position(): Point {
     return this._transform.position
   }
@@ -44,38 +59,39 @@ export class RigidBody implements Component, Collision.Tracker {
     return this._transform.scale.x
   }
 
+  get mass(): number {
+    return this._mass
+  }
+  get invMass(): number {
+    return this._invMass
+  }
+  set mass(value: number) {
+    if (this.isStatic) return
+
+    this._mass = EMath.clamp(value, 0, Infinity)
+    this._invMass = this._mass > 0 ? 1 / this._mass : 0
+  }
+
+  get inertia(): number {
+    return this._inertia
+  }
+  get invInertia(): number {
+    return this._invInertia
+  }
+  set inertia(value: number) {
+    if (this.isStatic) return
+
+    this._inertia = EMath.clamp(value, 0, Infinity)
+    this._invInertia = this._invInertia > 0 ? 1 / this._invInertia : 0
+  }
+
   get direction(): Vector {
     return new Vector(Math.cos(this.rotation), Math.sin(this.rotation))
   }
 
-  constructor(
-    public readonly collider: Collider,
-    options?: Partial<RigidBody.Options>,
-  ) {
-    collider.layer = options?.layer ?? 1
-
-    this._transform = collider._transform
-
-    this.isStatic = options?.isStatic ?? false
-    this.isKinematic = options?.isKinematic ?? false
-
-    this.mass = this.isStatic ? 0 : collider._areaProperties.mass
-    this.invMass = this.mass > 0 ? 1 / this.mass : 0
-    this.inertia = this.isStatic ? 0 : collider._areaProperties.momentOfInertia
-    this.invInertia = this.inertia > 0 ? 1 / this.inertia : 0
-
-    if (options?.restitution != undefined) this.setRestitution(options?.restitution)
-    if (options?.friction) this.setFriction(options.friction)
-
-    if (options?.drag) this.setDrag(options.drag)
-    if (options?.angularDrag != undefined) this.setAngularDrag(options.angularDrag)
-
-    if (options?.initialPosition) this._transform.position.copyFrom(options.initialPosition)
-    if (options?.initialRotation) this._transform.rotation = options.initialRotation
-    if (options?.initialScale != undefined) this._transform.scale.x = options.initialScale
-
-    if (options?.initialVelocity) this.velocity.copyFrom(options.initialVelocity)
-    if (options?.initialAngularVelocity) this.angularVelocity = options.initialAngularVelocity
+  resetAreaProperties(properties: Physics.AreaProperties) {
+    this.mass = properties.mass
+    this.inertia = properties.momentOfInertia
   }
 
   setRestitution(value: number) {
@@ -111,11 +127,6 @@ export namespace RigidBody {
   export interface Options {
     isStatic: boolean
     isKinematic: boolean
-    layer: number
-
-    initialPosition: PointData
-    initialRotation: number
-    initialScale: number
 
     initialVelocity: VectorData
     initialAngularVelocity: number

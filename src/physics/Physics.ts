@@ -12,4 +12,11 @@ export namespace Physics {
     static: number
     dynamic: number
   }
+
+  export interface AreaProperties {
+    // As per Area Density: https://en.wikipedia.org/wiki/Area_density
+    mass: number
+    // As per Second Moment of Inertia: https://en.wikipedia.org/wiki/Second_moment_of_area
+    momentOfInertia: number
+  }
 }
