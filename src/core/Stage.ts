@@ -2,15 +2,15 @@ import { Container, RenderLayer } from 'pixi.js'
 import { Entity, SimpleEntity, type EntityComponent, type EntityConstructor } from './'
 import { Collider, Components, RigidBody } from '../components'
 
-export class Stage<Cs extends Components> extends Container {
+export class Stage<C extends Components> extends Container {
   readonly _colliders: EntityComponent<Collider>[] = []
 
   private nextEntityId = 1
   private id2TagMap = new Map<number, string>()
   private tag2IdsMap = new Map<string, number[]>()
-  private id2EntityMap = new Map<number, Entity<Cs>>()
-  private type2EntityMap = new Map<string, Entity<Cs>>()
-  private id2ComponentsMap = new Map<number, Map<keyof Cs, Cs[keyof Cs]>>()
+  private id2EntityMap = new Map<number, Entity<C>>()
+  private type2EntityMap = new Map<string, Entity<C>>()
+  private id2ComponentsMap = new Map<number, Map<keyof C, C[keyof C]>>()
   private renderLayers = new Map(
     [Stage.Layer.ENTITIES, Stage.Layer.UI, Stage.Layer.DEBUG].map((key) => [
       key,
@@ -28,7 +28,7 @@ export class Stage<Cs extends Components> extends Container {
     return this.renderLayers.get(key)!
   }
 
-  createEntity<T extends Entity<Cs>>(type: EntityConstructor<Cs, T>): T {
+  createEntity<T extends Entity<C>>(type: EntityConstructor<C, T>): T {
     const id = this.nextEntityId++
     const entity = new type(
       id,
@@ -52,8 +52,8 @@ export class Stage<Cs extends Components> extends Container {
     return entity
   }
 
-  createSimpleEntity(options?: Partial<SimpleEntity.Options>): SimpleEntity<Cs> {
-    const entity = this.createEntity(SimpleEntity<Cs>)
+  createSimpleEntity(options?: Partial<SimpleEntity.Options>): SimpleEntity<C> {
+    const entity = this.createEntity(SimpleEntity<C>)
 
     if (options?.tag) this.tag(entity.id, options.tag)
     if (options?.position) entity.position = options.position
@@ -77,25 +77,25 @@ export class Stage<Cs extends Components> extends Container {
     return (this.tag2IdsMap.get(tag)?.length ?? 0) > 0
   }
 
-  getEntity<T extends Entity<Cs>>(id: number): T | undefined {
+  getEntity<T extends Entity<C>>(id: number): T | undefined {
     return this.id2EntityMap.get(id) as T
   }
 
-  getEntityByType<T extends Entity<Cs>>(type: EntityConstructor<Cs, T>): T | undefined {
+  getEntityByType<T extends Entity<C>>(type: EntityConstructor<C, T>): T | undefined {
     return this.type2EntityMap.get(type.name) as T
   }
 
-  getFirstEntityByTag(tag: string): Entity<Cs> | undefined {
+  getFirstEntityByTag(tag: string): Entity<C> | undefined {
     const id = this.tag2IdsMap.get(tag)?.[0]
 
     return id ? this.id2EntityMap.get(id) : undefined
   }
 
-  getEntitiesByTag(tag: string): Entity<Cs>[] {
+  getEntitiesByTag(tag: string): Entity<C>[] {
     return this.tag2IdsMap.get(tag)?.map((id) => this.id2EntityMap.get(id)!) ?? []
   }
 
-  tag(entityId: number, tag: string): Entity<Cs> | undefined {
+  tag(entityId: number, tag: string): Entity<C> | undefined {
     const entity = this.id2EntityMap.get(entityId)
     if (!entity) {
       return
@@ -122,32 +122,32 @@ export class Stage<Cs extends Components> extends Container {
     return this.tag2IdsMap.get(tag)
   }
 
-  hasComponent<K extends keyof Cs>(key: K, entityId: number): boolean {
+  hasComponent<K extends keyof C>(key: K, entityId: number): boolean {
     return this.id2ComponentsMap.get(entityId)?.has(key) ?? false
   }
 
-  getComponent<K extends keyof Cs>(key: K, entityId: number): Cs[K] | undefined {
-    return this.id2ComponentsMap.get(entityId)?.get(key) as Cs[K]
+  getComponent<K extends keyof C>(key: K, entityId: number): C[K] | undefined {
+    return this.id2ComponentsMap.get(entityId)?.get(key) as C[K]
   }
 
-  getComponents<K extends keyof Cs>(key: K): Cs[K][] {
-    const components: Cs[K][] = []
+  getComponents<K extends keyof C>(key: K): C[K][] {
+    const components: C[K][] = []
     this.id2ComponentsMap.forEach((cMap) => {
       if (cMap.has(key)) {
-        components.push(cMap.get(key)! as Cs[K])
+        components.push(cMap.get(key)! as C[K])
       }
     })
     return components
   }
 
-  addComponents(entityId: number, components: Partial<Cs>): Entity<Cs> | undefined {
+  addComponents(entityId: number, components: Partial<C>): Entity<C> | undefined {
     const entity = this.id2EntityMap.get(entityId)
     if (!entity) {
       console.error('Undefined entity', entityId)
       return
     }
     const componentsMap = this.id2ComponentsMap.get(entityId)!
-    const entries = Object.entries(components) as [keyof Cs, Cs[keyof Cs]][]
+    const entries = Object.entries(components) as [keyof C, C[keyof C]][]
     for (const [key, component] of entries) {
       componentsMap.set(key, component)
 
@@ -157,7 +157,7 @@ export class Stage<Cs extends Components> extends Container {
     return this.id2EntityMap.get(entityId)!
   }
 
-  removeComponent<K extends keyof Cs>(key: K, entityId: number): boolean {
+  removeComponent<K extends keyof C>(key: K, entityId: number): boolean {
     const c2typeMap = this.id2ComponentsMap.get(entityId)
     if (!c2typeMap) {
       console.error('Undefined entity', entityId)
@@ -172,10 +172,10 @@ export class Stage<Cs extends Components> extends Container {
     return c2typeMap.delete(key)
   }
 
-  removeEntity(id: number) {
+  removeEntity(id: number): boolean {
     const entity = this.id2EntityMap.get(id)
     if (!entity) {
-      return
+      return false
     }
     this.removeChild(entity)
     this.id2EntityMap.delete(id)
@@ -188,6 +188,8 @@ export class Stage<Cs extends Components> extends Container {
       this.deleteTaggedId(tag, id)
       this.id2TagMap.delete(id)
     }
+
+    return true
   }
 
   private deleteTaggedId(tag: string, entityId: number) {
@@ -210,7 +212,7 @@ export class Stage<Cs extends Components> extends Container {
     }
   }
 
-  private onComponentAdded<K extends keyof Cs>(key: K, component: Cs[K], entity: Entity<Cs>) {
+  private onComponentAdded<K extends keyof C>(key: K, component: C[K], entity: Entity<C>) {
     if (component instanceof Collider) {
       this.resetColliderEntry(component, entity.id)
 
