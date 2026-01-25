@@ -1,11 +1,10 @@
 import { Application, Ticker, type ApplicationOptions } from 'pixi.js'
 import { Scene, Screen, type Disconnectable } from '../core'
-import { Components } from '../components'
-import { Signals, SignalController } from '../signals'
+import type { Components } from '../components'
+import { type Signals, SignalController } from '../signals'
 import { EMath } from '../extras'
-import { Debug } from '../debug'
 
-export class Game<
+export abstract class Game<
   C extends Components,
   S extends Signals,
   State extends Game.State,
@@ -18,19 +17,21 @@ export class Game<
     step: 1 / 60,
     reserve: 0,
   }
-  private debugDisplay?: Debug.Display
 
   constructor(
-    private scenes: Scene<C, S>[],
+    private scenes: (typeof Scene<C, S>)[],
     public state: State,
   ) {
     super()
   }
 
+  async load?(): Promise<void>
+
   connect?(signals: Signals.Bus<S>, state: State): Disconnectable[]
 
   async init(options: Partial<Game.Options>): Promise<void> {
     await super.init(options)
+    await this.load?.()
 
     this.signalController = new SignalController()
 
@@ -43,39 +44,18 @@ export class Game<
     this.onResized(this.screen.width, this.screen.height)
   }
 
-  deinit() {
-    this.debugDisplay?.deinit()
-
-    this.ticker.remove(this.fixedUpdate, this)
-    this.ticker.remove(this.update, this)
-
-    this.renderer.removeAllListeners()
-
-    this.scene?.deinit()
-    this.scene = undefined
-
-    this.stage.removeChildren()
-
-    this.connections.forEach((d) => d.disconnect())
-    this.connections.length = 0
-  }
-
-  async play(label: string) {
-    const nextScene = this.scenes.find((s) => s.label == label)
-    if (!nextScene) {
-      console.error(`Unknown Scene '${label}'`)
-      return
-    }
-
+  // TODO add constraint for passed in scenes at instantiation
+  async play<T extends Scene<C, S>>(type: new () => T) {
     if (this.scene) {
       this.stage.removeChild(this.scene)
       this.scene.deinit()
     }
 
+    const nextScene = new type()
     await nextScene.init(this.signalController)
 
+    this.stage.addChild(nextScene)
     this.scene = nextScene
-    this.stage.addChild(this.scene)
   }
 
   private fixedUpdate(ticker: Ticker) {

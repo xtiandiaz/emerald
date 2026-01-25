@@ -1,5 +1,5 @@
-import { Disconnectable } from '../core'
-import { Signal } from './'
+import type { Disconnectable } from '../core'
+import type { Signal } from '.'
 import { Debug } from '../debug'
 
 export interface Signals {

@@ -1,6 +1,6 @@
-import { Disconnectable, Entity, Stage, System } from '../core'
-import { Collider, Components } from '../components'
-import { Signals } from '../signals'
+import { type Disconnectable, Entity, Stage, System } from '../core'
+import { Collider, type Components } from '../components'
+import type { Signals } from '../signals'
 import { Collision } from '../collision'
 import { Debug } from '../debug'
 
@@ -30,7 +30,7 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
     this.debugGraphics?.clear()
 
     for (let i = 0; i < colliders.length; i++) {
-      const [id, collider] = colliders[i]
+      const [id, collider] = colliders[i]!
 
       collider.contacts.clear()
 
@@ -40,12 +40,12 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
     }
 
     for (let i = 0; i < colliders.length - 1; i++) {
-      const [idA, A] = colliders[i]
+      const [idA, A] = colliders[i]!
 
       A.contacts.clear()
 
       for (let j = i + 1; j < colliders.length; j++) {
-        const [idB, B] = colliders[j]
+        const [idB, B] = colliders[j]!
 
         if (!A.canCollide(B, this.options.layerMap)) {
           continue
@@ -62,7 +62,7 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
 
     if (this.resolveCollision) {
       for (let i = 0; i < this.collisions.length; i++) {
-        this.resolveCollision(this.collisions[i], stage)
+        this.resolveCollision(this.collisions[i]!, stage)
       }
     }
   }

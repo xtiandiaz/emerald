@@ -1,6 +1,6 @@
 import { Container, RenderLayer } from 'pixi.js'
 import { Entity, SimpleEntity, type EntityComponent, type EntityConstructor } from './'
-import { Collider, Components, RigidBody } from '../components'
+import { Collider, type Components, RigidBody } from '../components'
 
 export class Stage<C extends Components> extends Container {
   readonly _colliders: EntityComponent<Collider>[] = []
@@ -22,6 +22,15 @@ export class Stage<C extends Components> extends Container {
     super()
 
     this.renderLayers.forEach((rl) => this.addChild(rl))
+  }
+
+  deinit() {
+    this._colliders.length = 0
+    this.id2EntityMap.clear()
+    this.type2EntityMap.clear()
+    this.id2ComponentsMap.clear()
+
+    this.destroy({ children: true, texture: true, textureSource: true })
   }
 
   getLayer(key: Stage.Layer): RenderLayer {
@@ -216,15 +225,13 @@ export class Stage<C extends Components> extends Container {
     if (component instanceof Collider) {
       this.resetColliderEntry(component, entity.id)
 
-      this.getComponent('rigid-body', entity.id)?.resetAreaProperties(
-        component._areaProperties.physics,
-      )
+      this.getComponent('rigid-body', entity.id)?.resetAreaProperties(component._physicsProperties)
     } else if (component instanceof RigidBody) {
       component._transform.setFromMatrix(entity.getGlobalTransform())
 
       const collider = this.getComponent('collider', entity.id)
       if (collider) {
-        component.resetAreaProperties(collider._areaProperties.physics)
+        component.resetAreaProperties(collider._physicsProperties)
       }
     }
   }

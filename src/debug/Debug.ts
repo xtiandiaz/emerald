@@ -1,8 +1,8 @@
 import { Container, Text, Ticker, Graphics as PixiGraphics } from 'pixi.js'
 import type { Disconnectable, Stage } from '../core'
-import { Components } from '../components'
-import { Signals } from '../signals'
-import { Collider, Colliders, Collision } from '../collision'
+import type { Components, Collider } from '../components'
+import type { Signals } from '../signals'
+import { Collision } from '../collision'
 
 export namespace Debug {
   export namespace Options {
@@ -122,9 +122,9 @@ export namespace Debug {
 
   export class Graphics extends PixiGraphics {
     drawCollider(collider: Collider) {
-      collider.updateVerticesIfNeeded()
+      // collider.updateVerticesIfNeeded()
 
-      if (collider instanceof Colliders.Circle) {
+      if (collider instanceof Collision.Shape.Circle) {
         const r = collider.radius
         const center = collider.center
         this.circle(center.x, center.y, r)
@@ -136,14 +136,15 @@ export namespace Debug {
             center.y + r * Math.sin(collider._transform.rotation),
           )
           .stroke({ color: Color.COLLIDER, width: 2 })
-      } else if (collider instanceof Colliders.Polygon) {
+      } else if (collider instanceof Collision.Shape.Polygon) {
         this.poly(collider._vertices)
           .fill({ color: Color.COLLIDER, alpha: 0.5 })
           .stroke({ color: Color.COLLIDER, width: 2 })
       }
     }
 
-    drawCollisionContact(contact: Collision.Contact) {
+    drawCollisionContact(contact: Collision.Shape.Contact) {
+      if (!contact.points) return
       for (const cp of contact.points) {
         this.circle(cp.point.x, cp.point.y, 5).stroke({ color: 0xffffff, width: 2 })
       }

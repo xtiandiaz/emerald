@@ -1,6 +1,6 @@
-import { Container, ContainerChild, PointData } from 'pixi.js'
-import { Components } from '../components'
-import { VectorData } from './types'
+import { Container, type ContainerChild, type PointData } from 'pixi.js'
+import type { Components } from '../components'
+import type { VectorData } from './types'
 
 export type EntityConstructor<Cs extends Components, T extends Entity<Cs>> = new (
   id: number,

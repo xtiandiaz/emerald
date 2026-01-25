@@ -1,12 +1,12 @@
-import { ContainerChild, ContainerEvents, Sprite } from 'pixi.js'
-import { Entity, EntityConstructor, Stage, System, type Disconnectable } from '../core'
-import { Components } from '../components'
-import { Signals } from '../signals'
+import { type ContainerChild, type ContainerEvents, Sprite } from 'pixi.js'
+import { type EntityConstructor, Entity, Stage, System, Screen, type Disconnectable } from '../core'
+import type { Components } from '../components'
+import type { Signals } from '../signals'
 import { Input } from '../input'
 import { Debug } from '../debug'
 import { RayCaster } from '../collision/RayCaster'
 
-export class Scene<C extends Components, S extends Signals>
+export abstract class Scene<C extends Components, S extends Signals>
   extends Stage<C>
   implements Input.Provider
 {
@@ -31,7 +31,7 @@ export class Scene<C extends Components, S extends Signals>
 
   async load?(): Promise<void>
 
-  build?(stage: Stage<C>): void
+  abstract build(stage: Stage<C>): void
 
   connect?(signals: Signals.Bus<S>, input: Input.Provider): Disconnectable[]
 
@@ -44,26 +44,28 @@ export class Scene<C extends Components, S extends Signals>
 
     this.build?.(this)
 
-    this.connect?.(signals, this)
-
     const toolkit: System.InitToolkit<S> = {
       input: this,
       signals,
     }
-    this.systems.forEach((s) => this.connections.push(...(s._init?.(this, toolkit) ?? [])))
+    this.systems.forEach((s) => s._init(this, toolkit) ?? [])
 
     this.connections.push(
-      signals.connect('screen-resized', (s) => {
-        this.inputPad.width = s.width
-        this.inputPad.height = s.height
-      }),
+      ...(this.connect?.(signals, this) ?? []),
+      signals.connect('screen-resized', (s) => this.onResized()),
     )
+    this.onResized()
   }
 
   deinit(): void {
+    super.deinit()
+
     this.debugDisplay?.deinit()
 
+    this.systems.forEach((s) => s.deinit())
+
     this.connections.forEach((c) => c.disconnect())
+    this.connections.length = 0
   }
 
   fixedUpdate(signals: Signals.Bus<S>, dT: number) {
@@ -108,6 +110,10 @@ export class Scene<C extends Components, S extends Signals>
     }
 
     return isRemoved
+  }
+
+  private onResized() {
+    this.inputPad.setSize(Screen.width, Screen.height)
   }
 
   // Debug ⬇️
