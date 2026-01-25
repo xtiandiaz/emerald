@@ -3,9 +3,8 @@ import { Collider, Components } from '../components'
 import { Signals } from '../signals'
 import { Collision } from '../collision'
 import { Debug } from '../debug'
-import { Input } from '../input'
 
-export class CollisionSystem<Cs extends Components, Ss extends Signals> extends System<Cs, Ss> {
+export class CollisionSystem<C extends Components, S extends Signals> extends System<C, S> {
   private collisions: CollisionSystem.Instance[] = []
   private debugGraphics?: Debug.Graphics
 
@@ -13,17 +12,17 @@ export class CollisionSystem<Cs extends Components, Ss extends Signals> extends 
     super()
   }
 
-  init(stage: Stage<Cs>, signals: Signals.Bus<Ss>, input: Input.Provider): Disconnectable[] {
-    this.initDebugIfNeeded(stage, signals)
+  init(stage: Stage<C>, toolkit: System.InitToolkit<S>): Disconnectable[] {
+    this.initDebugIfNeeded(stage, toolkit.signals)
 
     return []
   }
 
-  prepareCollider(collider: Collider, entity: Entity<Cs>, dT: number): void {
+  prepareCollider(collider: Collider, entity: Entity<C>, dT: number): void {
     collider._transform.setFromMatrix(entity.getGlobalTransform())
   }
 
-  fixedUpdate(stage: Stage<Cs>, signals: Signals.Emitter<Ss>, dT: number): void {
+  fixedUpdate(stage: Stage<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
     const colliders = stage._colliders
 
     this.collisions.length = 0
@@ -68,9 +67,9 @@ export class CollisionSystem<Cs extends Components, Ss extends Signals> extends 
     }
   }
 
-  resolveCollision?(collision: CollisionSystem.Instance, stage: Stage<Cs>): void
+  resolveCollision?(collision: CollisionSystem.Instance, stage: Stage<C>): void
 
-  protected initDebugIfNeeded(stage: Stage<Cs>, signals: Signals.Bus<Ss>) {
+  protected initDebugIfNeeded(stage: Stage<C>, signals: Signals.Bus<S>) {
     if (!this.options.debug?.rendersColliders) {
       return
     }

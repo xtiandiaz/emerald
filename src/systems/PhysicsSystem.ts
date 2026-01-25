@@ -1,4 +1,4 @@
-import { Entity, Stage, Vector } from '../core'
+import { Entity, Stage, System, Vector } from '../core'
 import { CollisionSystem } from '.'
 import { Components, Collider } from '../components'
 import { Signals } from '../signals'
@@ -6,10 +6,7 @@ import { Collision } from '../collision'
 import { Physics, PhysicsEngine } from '../physics'
 import { Debug } from '../debug'
 
-export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends CollisionSystem<
-  Cs,
-  Ss
-> {
+export class PhysicsSystem<C extends Components, S extends Signals> extends CollisionSystem<C, S> {
   gravity: Physics.Gravity = {
     vector: new Vector(0, 1),
     value: 9.81, // m/s^2
@@ -26,7 +23,7 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Co
     if (options?.iterations) this.iterations = options.iterations
   }
 
-  prepareCollider(collider: Collider, entity: Entity<Cs>, dT: number): void {
+  prepareCollider(collider: Collider, entity: Entity<C>, dT: number): void {
     const body = entity.getComponent('rigid-body')
     if (!body || body.isStatic) {
       super.prepareCollider(collider, entity, dT)
@@ -39,14 +36,14 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Co
     entity.setFromMatrix(body._transform.matrix)
   }
 
-  fixedUpdate(stage: Stage<Cs>, signals: Signals.Emitter<Ss>, dT: number): void {
+  fixedUpdate(stage: Stage<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
     dT /= this.iterations
     for (let it = 0; it < this.iterations; it++) {
-      super.fixedUpdate(stage, signals, dT)
+      super.fixedUpdate(stage, toolkit, dT)
     }
   }
 
-  resolveCollision(collision: CollisionSystem.Instance, stage: Stage<Cs>): void {
+  resolveCollision(collision: CollisionSystem.Instance, stage: Stage<C>): void {
     const bodyA = stage.getComponent('rigid-body', collision.idA)
     const bodyB = stage.getComponent('rigid-body', collision.idB)
     if (bodyA && bodyB) {
@@ -54,7 +51,7 @@ export class PhysicsSystem<Cs extends Components, Ss extends Signals> extends Co
     }
   }
 
-  protected initDebugIfNeeded(stage: Stage<Cs>, signals: Signals.Bus<Ss>): void {
+  protected initDebugIfNeeded(stage: Stage<C>, signals: Signals.Bus<S>): void {
     super.initDebugIfNeeded(stage, signals)
 
     signals.emit('debug-physics-enabled', { iterations: this.iterations })

@@ -1,33 +1,33 @@
 import { Application, Ticker, type ApplicationOptions } from 'pixi.js'
 import { Scene, Screen, type Disconnectable } from '../core'
-import { type FixedTime, type GameState } from '.'
 import { Components } from '../components'
 import { Signals, SignalController } from '../signals'
 import { EMath } from '../extras'
 import { Debug } from '../debug'
 
 export class Game<
-  State extends GameState,
-  Cs extends Components,
-  Ss extends Signals,
+  C extends Components,
+  S extends Signals,
+  State extends Game.State,
 > extends Application {
-  protected signalController!: SignalController<Ss>
-  protected scene?: Scene<Cs, Ss>
+  protected signalController!: SignalController<S>
+  protected scene?: Scene<C, S>
+
   private connections: Disconnectable[] = []
-  private fixedTime: FixedTime = {
+  private fixedTime: Game.FixedTime = {
     step: 1 / 60,
     reserve: 0,
   }
   private debugDisplay?: Debug.Display
 
   constructor(
+    private scenes: Scene<C, S>[],
     public state: State,
-    private scenes: Scene<Cs, Ss>[],
   ) {
     super()
   }
 
-  connect?(signals: Signals.Bus<Ss>, state: State): Disconnectable[]
+  connect?(signals: Signals.Bus<S>, state: State): Disconnectable[]
 
   async init(options: Partial<Game.Options>): Promise<void> {
     await super.init(options)
@@ -111,4 +111,13 @@ export class Game<
 
 export namespace Game {
   export interface Options extends ApplicationOptions {}
+
+  export interface FixedTime {
+    step: number
+    reserve: number
+  }
+
+  export interface State extends Record<string, any> {
+    isPaused: boolean
+  }
 }

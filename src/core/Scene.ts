@@ -4,6 +4,7 @@ import { Components } from '../components'
 import { Signals } from '../signals'
 import { Input } from '../input'
 import { Debug } from '../debug'
+import { RayCaster } from '../collision/RayCaster'
 
 export class Scene<C extends Components, S extends Signals>
   extends Stage<C>
@@ -11,8 +12,9 @@ export class Scene<C extends Components, S extends Signals>
 {
   protected connections: Disconnectable[] = []
 
-  private signals?: Signals.Bus<S>
   private inputPad = new Sprite()
+  private rayCaster = new RayCaster(this._colliders)
+  private signals?: Signals.Bus<S>
   private debugDisplay?: Debug.Display
 
   constructor(
@@ -44,7 +46,11 @@ export class Scene<C extends Components, S extends Signals>
 
     this.connect?.(signals, this)
 
-    this.systems.forEach((s) => this.connections.push(...(s._init?.(this, signals, this) ?? [])))
+    const toolkit: System.InitToolkit<S> = {
+      input: this,
+      signals,
+    }
+    this.systems.forEach((s) => this.connections.push(...(s._init?.(this, toolkit) ?? [])))
 
     this.connections.push(
       signals.connect('screen-resized', (s) => {
@@ -60,15 +66,15 @@ export class Scene<C extends Components, S extends Signals>
     this.connections.forEach((c) => c.disconnect())
   }
 
-  fixedUpdate(signalBus: Signals.Bus<S>, dT: number) {
+  fixedUpdate(signals: Signals.Bus<S>, dT: number) {
     this.systems.forEach((s) => {
-      s.fixedUpdate?.(this, signalBus, dT)
+      s.fixedUpdate?.(this, { rayCaster: this.rayCaster, signals }, dT)
     })
   }
 
-  update(signalBus: Signals.Bus<S>, dT: number) {
+  update(signals: Signals.Bus<S>, dT: number) {
     this.systems.forEach((s) => {
-      s.update?.(this, signalBus, dT)
+      s.update?.(this, { rayCaster: this.rayCaster, signals }, dT)
     })
   }
 

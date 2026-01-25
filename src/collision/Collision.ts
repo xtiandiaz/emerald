@@ -1,6 +1,5 @@
-import { Point, PointData } from 'pixi.js'
-import { Collider } from './Collider'
-import { RigidBody } from '../components'
+import { Point } from 'pixi.js'
+import { RigidBody, Collider } from '../components'
 import { VectorData } from '../core'
 
 export namespace Collision {
@@ -19,7 +18,7 @@ export namespace Collision {
     collisionMask: number,
   ): Ray => ({
     origin,
-    target: new Point(directionNorm.x * distance, directionNorm.y * distance),
+    target: new Point(origin.x + directionNorm.x * distance, origin.y + directionNorm.y * distance),
     collisionMask,
     intersects: false,
   })

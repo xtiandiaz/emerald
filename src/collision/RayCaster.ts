@@ -1,13 +1,18 @@
-import { Collider } from './Collider'
+import { EntityComponent } from '../core'
 import { Collision } from './Collision'
+import { Collider } from '../components'
 
 export class RayCaster {
-  private ray?: Collision.Ray
+  constructor(private colliders: EntityComponent<Collider>[]) {}
 
-  cast(rays: Collision.Ray[], origin: Collider) {
-    // rays.forEach((r) => {
-    //       ray = A.collider.transformRay(r, ray)
-    //       B.collider.evaluateRayIntersection(ray!)
-    //     })
+  cast(ray: Collision.Ray): boolean {
+    for (let i = 0; i < this.colliders.length; i++) {
+      this.colliders[i][1].evaluateRayIntersection(ray)
+      if (ray.intersects) {
+        return true
+      }
+    }
+
+    return false
   }
 }

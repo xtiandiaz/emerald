@@ -73,20 +73,20 @@ export abstract class Collider implements Component {
     return contact
   }
 
-  transformRay(localRay: Collision.Ray, out_ray?: Collision.Ray): Collision.Ray {
-    out_ray ??= {
-      origin: localRay.origin.clone(),
-      target: localRay.target.clone(),
-      collisionMask: localRay.collisionMask,
-      intersects: localRay.intersects,
-    }
-    const matrix = this._transform.matrix
-    matrix.apply(localRay.origin, out_ray.origin)
-    matrix.apply(localRay.target, out_ray.target)
-    out_ray.intersects = false
+  // transformRay(localRay: Collision.Ray, out_ray?: Collision.Ray): Collision.Ray {
+  //   out_ray ??= {
+  //     origin: localRay.origin.clone(),
+  //     target: localRay.target.clone(),
+  //     collisionMask: localRay.collisionMask,
+  //     intersects: localRay.intersects,
+  //   }
+  //   const matrix = this._transform.matrix
+  //   matrix.apply(localRay.origin, out_ray.origin)
+  //   matrix.apply(localRay.target, out_ray.target)
+  //   out_ray.intersects = false
 
-    return out_ray
-  }
+  //   return out_ray
+  // }
 
   evaluateRayIntersection(ray: Collision.Ray) {
     ray.intersects = false
@@ -94,6 +94,7 @@ export abstract class Collider implements Component {
     if ((this.layer & ray.collisionMask) == 0) {
       return
     }
+
     const axis = new Vector()
     ray.target.subtract(ray.origin, axis).normalize(axis)
 
