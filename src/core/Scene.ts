@@ -31,7 +31,7 @@ export abstract class Scene<C extends Components, S extends Signals>
 
   async load?(): Promise<void>
 
-  abstract build(stage: Stage<C>): void
+  abstract build(): void
 
   connect?(signals: Signals.Bus<S>, input: Input.Provider): Disconnectable[]
 
@@ -42,7 +42,7 @@ export abstract class Scene<C extends Components, S extends Signals>
 
     this.initDebugIfNeeded(signals)
 
-    this.build?.(this)
+    this.build?.()
 
     const toolkit: System.InitToolkit<S> = {
       input: this,

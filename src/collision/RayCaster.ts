@@ -1,4 +1,4 @@
-import { EntityComponent } from '../core'
+import type { EntityComponent } from '../core'
 import { Collision } from './Collision'
 import { Collider } from '../components'
 
@@ -7,7 +7,7 @@ export class RayCaster {
 
   cast(ray: Collision.Ray): boolean {
     for (let i = 0; i < this.colliders.length; i++) {
-      this.colliders[i][1].evaluateRayIntersection(ray)
+      this.colliders[i]![1].evaluateRayIntersection(ray)
       if (ray.intersects) {
         return true
       }

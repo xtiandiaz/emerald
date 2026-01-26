@@ -1,6 +1,6 @@
 import type { Point } from 'pixi.js'
 import { Physics } from './'
-import { Vector, VectorData } from '../core'
+import { Vector, type VectorData } from '../core'
 import { RigidBody, Collider } from '../components'
 import { EMath } from '../extras'
 

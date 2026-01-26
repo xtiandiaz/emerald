@@ -1,5 +1,5 @@
-import { Disconnectable } from '../core'
-import { Signals } from '.'
+import type { Disconnectable } from '../core'
+import type { Signals } from '.'
 
 export class SignalController<SI extends Signals> implements Signals.Bus<SI> {
   private connectors = new Map<keyof SI, Set<Signals.Connector<SI, any>>>()

@@ -9,6 +9,12 @@ export namespace Signal {
     tag?: string
   }
 
+  // export class GestureSignal<T extends Gesture> extends Signal {
+  //   constructor(public gesture: T) {
+  //     super()
+  //   }
+  // }
+
   export interface ScreenResized extends Signal {
     height: number
     width: number

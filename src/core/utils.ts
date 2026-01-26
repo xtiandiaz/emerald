@@ -1,4 +1,4 @@
-import { Disconnectable } from './types'
+import type { Disconnectable } from './types'
 
 export namespace ConnectableUtils {
   export function timer(
@@ -6,12 +6,14 @@ export namespace ConnectableUtils {
     repeats: boolean,
     callback: () => void,
   ): Disconnectable {
-    let intervalId: NodeJS.Timeout
+    let intervalId: number
     const disconnect = () => clearInterval(intervalId)
-    intervalId = setInterval(() => {
-      callback()
-      if (!repeats) disconnect()
-    }, intervalMS)
+    intervalId = Number(
+      setInterval(() => {
+        callback()
+        if (!repeats) disconnect()
+      }, intervalMS),
+    )
 
     return {
       disconnect,
