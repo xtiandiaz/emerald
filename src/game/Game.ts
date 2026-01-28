@@ -18,10 +18,7 @@ export abstract class Game<
     reserve: 0,
   }
 
-  constructor(
-    private scenes: (typeof Scene<C, S>)[],
-    public state: State,
-  ) {
+  constructor(public state: State) {
     super()
   }
 
@@ -44,8 +41,7 @@ export abstract class Game<
     this.onResized(this.screen.width, this.screen.height)
   }
 
-  // TODO add constraint for passed in scenes at instantiation
-  async play<T extends Scene<C, S>>(type: new () => T) {
+  async playScene<T extends Scene<C, S>>(type: new () => T) {
     if (this.scene) {
       this.stage.removeChild(this.scene)
       this.scene.deinit()
@@ -97,7 +93,8 @@ export namespace Game {
     reserve: number
   }
 
-  export interface State extends Record<string, any> {
+  export interface State {
     isPaused: boolean
+    [key: string]: any
   }
 }

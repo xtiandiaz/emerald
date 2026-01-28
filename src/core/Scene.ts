@@ -18,7 +18,6 @@ export abstract class Scene<C extends Components, S extends Signals>
   private debugDisplay?: Debug.Display
 
   constructor(
-    public readonly label: string,
     protected readonly systems: System<C, S>[],
     protected readonly options?: Partial<Scene.Options>,
   ) {
@@ -52,7 +51,7 @@ export abstract class Scene<C extends Components, S extends Signals>
 
     this.connections.push(
       ...(this.connect?.(signals, this) ?? []),
-      signals.connect('screen-resized', (s) => this.onResized()),
+      signals.connect('screen-resized', () => this.onResized()),
     )
     this.onResized()
   }
