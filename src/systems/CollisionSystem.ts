@@ -32,7 +32,7 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
     for (let i = 0; i < colliders.length; i++) {
       const [id, collider] = colliders[i]!
 
-      collider.contacts.clear()
+      collider.collisions.clear()
 
       this.prepareCollider(collider, stage.getEntity(id)!, dT)
 
@@ -41,8 +41,6 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
 
     for (let i = 0; i < colliders.length - 1; i++) {
       const [idA, A] = colliders[i]!
-
-      A.contacts.clear()
 
       for (let j = i + 1; j < colliders.length; j++) {
         const [idB, B] = colliders[j]!
@@ -53,7 +51,8 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
 
         const contact = A.findContact(B, this.options.findsContactPoints)
         if (contact) {
-          A.contacts.set(idB, contact)
+          A.collisions.set(idB, { colliderId: idB, ...contact })
+          B.collisions.set(idA, { colliderId: idA, ...contact })
 
           this.collisions.push({ idA, idB, contact })
         }

@@ -8,8 +8,6 @@ export interface Signals {
   'screen-resized': Signal.ScreenResized
   // Debug
   'debug-physics-enabled': Debug.Signal.PhysicsEnabled
-  //
-  [key: string]: Signal
 }
 
 export namespace Signals {

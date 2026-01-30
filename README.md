@@ -300,9 +300,7 @@ I'm also open for anyone to contribute if you see value in this engine.
 
 ### Physics
 
-- Implement ray casts (to early detect contacts)
 - Explore the generation of tile-map collider(s) and how to handle collisions within
-- Add more information about the collisions stated per-loop at the `Collider` instances (for whatever needed).
 
 ### Input
 

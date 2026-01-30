@@ -6,7 +6,7 @@ import type { Physics } from '../physics'
 
 export class Collider implements Component {
   layer: number
-  readonly contacts = new Map<number, Collider.Contact>()
+  readonly collisions = new Map<number, Collision.Instance>()
 
   get _transform(): Transform {
     return this.shape._transform

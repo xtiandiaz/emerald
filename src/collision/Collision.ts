@@ -6,6 +6,10 @@ import { EMath } from '../extras'
 export namespace Collision {
   export type LayerMap = Map<number, number>
 
+  export interface Instance extends Shape.Contact {
+    colliderId: number
+  }
+
   export interface Ray {
     origin: Point
     target: Point
