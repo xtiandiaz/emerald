@@ -1,8 +1,9 @@
-import { type Disconnectable, Entity, Stage, System } from '../core'
-import { Collider, type Components } from '../components'
+import { type Disconnectable, Entity, Stage, System, Screen } from '../core'
+import { Collider, RayCast, type Components } from '../components'
 import type { Signals } from '../signals'
 import { Collision } from '../collision'
 import { Debug } from '../debug'
+import { Point } from 'pixi.js'
 
 export class CollisionSystem<C extends Components, S extends Signals> extends System<C, S> {
   private collisions: CollisionSystem.Instance[] = []
@@ -27,6 +28,11 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
   fixedUpdate(stage: Stage<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
     const colliders = stage._colliders
 
+    let rcA: RayCast | undefined, rcB: RayCast | undefined
+    // TODO Optimize by passing reference values
+    // let castableRays: Collision.Ray[] | undefined
+    // let ray = new Collision.Ray(new Point(), new Point(), 0)
+
     this.collisions.length = 0
 
     this.debugGraphics?.clear()
@@ -36,26 +42,32 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
 
       this.prepareCollider(collider, stage.getEntity(id)!, dT)
 
+      stage.getComponent('ray-cast', id)?.reset()
+
       this.debugGraphics?.drawCollider(collider)
     }
 
-    for (let i = 0; i < colliders.length - 1; i++) {
+    for (let i = 0; i < colliders.length; i++) {
       const [idA, A] = colliders[i]!
+      rcA = stage.getComponent('ray-cast', idA)
 
       for (let j = i + 1; j < colliders.length; j++) {
         const [idB, B] = colliders[j]!
 
-        if (!A.canCollide(B, this.options.layerMap)) {
-          continue
+        if (A.canCollide(B, this.options.layerMap)) {
+          const contact = A.findContact(B, this.options.findsContactPoints)
+          if (contact) {
+            A.collisions.set(idB, { colliderId: idB, ...contact })
+            B.collisions.set(idA, { colliderId: idA, ...contact })
+
+            this.collisions.push({ idA, idB, contact })
+          }
         }
 
-        const contact = A.findContact(B, this.options.findsContactPoints)
-        if (contact) {
-          A.collisions.set(idB, { colliderId: idB, ...contact })
-          B.collisions.set(idA, { colliderId: idA, ...contact })
+        if (rcA) this.castAndUpdateRays(A, rcA, B)
 
-          this.collisions.push({ idA, idB, contact })
-        }
+        rcB = stage.getComponent('ray-cast', idB)
+        if (rcB) this.castAndUpdateRays(B, rcB, A)
       }
     }
 
@@ -63,6 +75,16 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
       for (let i = 0; i < this.collisions.length; i++) {
         this.resolveCollision(this.collisions[i]!, stage)
       }
+    }
+  }
+
+  castAndUpdateRays(A: Collider, rcA: RayCast, B: Collider) {
+    for (const [key, _ray] of rcA.rays ?? []) {
+      const ray = _ray.transform(A._transform.matrix)
+      B.evaluateRayIntersection(ray)
+
+      rcA.casts.set(key, (rcA.casts.get(key) ?? false) || ray.intersects)
+      _ray.intersects = ray.intersects
     }
   }
 

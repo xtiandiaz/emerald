@@ -1,4 +1,4 @@
-import { Point, Transform, type PointData } from 'pixi.js'
+import { Matrix, Point, Transform, type PointData } from 'pixi.js'
 import { Vector, Range, type VectorData } from '../core'
 import { Geometry } from '../geometry'
 import { EMath } from '../extras'
@@ -10,23 +10,44 @@ export namespace Collision {
     colliderId: number
   }
 
-  export interface Ray {
-    origin: Point
-    target: Point
-    collisionMask: number
-    intersects: boolean
+  export class Ray {
+    intersects = false
+
+    constructor(
+      public readonly origin: Point,
+      public readonly target: Point,
+      public collisionMask: number,
+    ) {}
+
+    canCollide(layer: number) {
+      return (this.collisionMask & layer) != 0
+    }
+
+    transform(matrix: Matrix, out_ray?: Ray): Ray {
+      if (!out_ray) {
+        out_ray = new Ray(new Point(), new Point(), this.collisionMask)
+      } else {
+        out_ray.collisionMask = this.collisionMask
+      }
+      matrix.apply(this.origin, out_ray.origin)
+      matrix.apply(this.target, out_ray.target)
+
+      return out_ray
+    }
   }
+
   export const ray = (
     origin: Point,
     directionNorm: VectorData,
     distance: number,
     collisionMask: number,
-  ): Ray => ({
-    origin,
-    target: new Point(origin.x + directionNorm.x * distance, origin.y + directionNorm.y * distance),
-    collisionMask,
-    intersects: false,
-  })
+  ): Ray => {
+    return new Ray(
+      new Point().copyFrom(origin),
+      new Point(origin.x + directionNorm.x * distance, origin.y + directionNorm.y * distance),
+      collisionMask,
+    )
+  }
 
   export abstract class Shape {
     layer: number
@@ -105,6 +126,8 @@ export namespace Collision {
       if ((this.layer & ray.collisionMask) == 0) {
         return
       }
+
+      this.updateVerticesIfNeeded()
 
       const axis = new Vector()
       ray.target.subtract(ray.origin, axis).normalize(axis)

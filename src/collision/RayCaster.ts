@@ -8,6 +8,7 @@ export class RayCaster {
   cast(ray: Collision.Ray): boolean {
     for (let i = 0; i < this.colliders.length; i++) {
       this.colliders[i]![1].evaluateRayIntersection(ray)
+
       if (ray.intersects) {
         return true
       }
