@@ -122,11 +122,13 @@ export namespace Debug {
 
   export class Graphics extends PixiGraphics {
     drawCollider(collider: Collider) {
-      // collider.updateVerticesIfNeeded()
+      // In debug, constantly update the vertices because otherwise
+      // it relies in the existence of 'compatible' colliders (to check for AABB intersection and find contacts)
+      collider.shape.updateVerticesIfNeeded()
 
-      if (collider instanceof Collision.Shape.Circle) {
-        const r = collider.radius
-        const center = collider.center
+      if (collider.shape instanceof Collision.Shape.Circle) {
+        const r = collider.shape.radius
+        const center = collider.shape.center
         this.circle(center.x, center.y, r)
           .fill({ color: Color.COLLIDER, alpha: 0.5 })
           .stroke({ color: Color.COLLIDER, width: 2 })
@@ -136,8 +138,8 @@ export namespace Debug {
             center.y + r * Math.sin(collider._transform.rotation),
           )
           .stroke({ color: Color.COLLIDER, width: 2 })
-      } else if (collider instanceof Collision.Shape.Polygon) {
-        this.poly(collider._vertices)
+      } else if (collider.shape instanceof Collision.Shape.Polygon) {
+        this.poly(collider.shape._vertices)
           .fill({ color: Color.COLLIDER, alpha: 0.5 })
           .stroke({ color: Color.COLLIDER, width: 2 })
       }

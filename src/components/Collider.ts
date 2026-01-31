@@ -16,7 +16,7 @@ export class Collider implements Component {
   }
 
   constructor(
-    private shape: Collision.Shape,
+    public shape: Collision.Shape,
     options?: Partial<Collider.Options>,
   ) {
     this.layer = options?.layer ?? 1

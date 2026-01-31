@@ -9,7 +9,7 @@ export class Stage<C extends Components> extends Container {
   private id2TagMap = new Map<number, string>()
   private tag2IdsMap = new Map<string, number[]>()
   private id2EntityMap = new Map<number, Entity<C>>()
-  private type2EntityMap = new Map<string, Entity<C>>()
+  private type2IdsMap = new Map<string, number[]>()
   private id2ComponentsMap = new Map<number, Map<keyof C, C[keyof C]>>()
   private renderLayers = new Map(
     [Stage.Layer.ENTITIES, Stage.Layer.UI, Stage.Layer.DEBUG].map((key) => [
@@ -27,7 +27,7 @@ export class Stage<C extends Components> extends Container {
   deinit() {
     this._colliders.length = 0
     this.id2EntityMap.clear()
-    this.type2EntityMap.clear()
+    this.type2IdsMap.clear()
     this.id2ComponentsMap.clear()
 
     this.destroy({ children: true, texture: true, textureSource: true })
@@ -50,8 +50,12 @@ export class Stage<C extends Components> extends Container {
     )
 
     this.id2EntityMap.set(id, entity)
-    this.type2EntityMap.set(type.name, entity)
     this.id2ComponentsMap.set(id, new Map())
+
+    if (!this.type2IdsMap.has(type.name)) {
+      this.type2IdsMap.set(type.name, [])
+    }
+    this.type2IdsMap.get(type.name)!.push(id)
 
     entity.init()
 
@@ -90,18 +94,24 @@ export class Stage<C extends Components> extends Container {
     return this.id2EntityMap.get(id) as T
   }
 
-  getEntityByType<T extends Entity<C>>(type: EntityConstructor<C, T>): T | undefined {
-    return this.type2EntityMap.get(type.name) as T
+  getEntitiesByType<T extends Entity<C>>(type: EntityConstructor<C, T>): T[] {
+    return this.type2IdsMap.get(type.name)?.map((id) => this.id2EntityMap.get(id)! as T) ?? []
+  }
+
+  getFirstEntityByType<T extends Entity<C>>(type: EntityConstructor<C, T>): T | undefined {
+    const id = this.type2IdsMap.get(type.name)?.[0]
+
+    return id ? (this.id2EntityMap.get(id) as T) : undefined
+  }
+
+  getEntitiesByTag(tag: string): Entity<C>[] {
+    return this.tag2IdsMap.get(tag)?.map((id) => this.id2EntityMap.get(id)!) ?? []
   }
 
   getFirstEntityByTag(tag: string): Entity<C> | undefined {
     const id = this.tag2IdsMap.get(tag)?.[0]
 
     return id ? this.id2EntityMap.get(id) : undefined
-  }
-
-  getEntitiesByTag(tag: string): Entity<C>[] {
-    return this.tag2IdsMap.get(tag)?.map((id) => this.id2EntityMap.get(id)!) ?? []
   }
 
   tag(entityId: number, tag: string): Entity<C> | undefined {

@@ -3,6 +3,10 @@ import { Scene, Screen, type Disconnectable } from '../core'
 import type { Components } from '../components'
 import { type Signals, SignalController } from '../signals'
 import { EMath } from '../extras'
+//
+import * as PIXI from 'pixi.js'
+import gsap from 'gsap'
+import PixiPlugin from 'gsap/PixiPlugin'
 
 export abstract class Game<
   C extends Components,
@@ -20,6 +24,9 @@ export abstract class Game<
 
   constructor(public state: State) {
     super()
+
+    PixiPlugin.registerPIXI(PIXI)
+    gsap.registerPlugin(PixiPlugin)
   }
 
   async load?(): Promise<void>

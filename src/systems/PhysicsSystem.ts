@@ -25,7 +25,7 @@ export class PhysicsSystem<C extends Components, S extends Signals> extends Coll
 
   prepareCollider(collider: Collider, entity: Entity<C>, dT: number): void {
     const body = entity.getComponent('rigid-body')
-    if (!body || body.isStatic) {
+    if (!body) {
       super.prepareCollider(collider, entity, dT)
       return
     }
@@ -33,6 +33,8 @@ export class PhysicsSystem<C extends Components, S extends Signals> extends Coll
     this.engine.stepBody(body, this.gravity, this.PPM, dT)
 
     collider._transform.setFromMatrix(body._transform.matrix)
+
+    // TODO univify the transform if possible, or move the update of the entity's transform to somewhere else
     entity.setFromMatrix(body._transform.matrix)
   }
 
