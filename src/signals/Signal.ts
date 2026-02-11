@@ -1,6 +1,10 @@
 export interface Signal {}
 
 export namespace Signal {
+  export interface Action extends Signal {
+    key: string
+  }
+
   export interface EntityAdded extends Signal {
     addedId: number
   }

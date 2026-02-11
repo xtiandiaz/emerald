@@ -1,5 +1,1 @@
-export * from './types'
 export * from './Input'
-export * from './InputController'
-export * from './gestures'
-export * from './gesture-trackers'

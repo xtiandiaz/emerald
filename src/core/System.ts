@@ -2,7 +2,7 @@ import type { Stage, Disconnectable } from './'
 import type { Components } from '../components'
 import { RayCaster } from '../collision'
 import type { Signals } from '../signals'
-import { Input } from '../input'
+import type { Input } from '../input'
 
 export abstract class System<C extends Components, S extends Signals> {
   protected connections: Disconnectable[] = []

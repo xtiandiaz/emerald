@@ -3,7 +3,6 @@ import { Collider, RayCast, type Components } from '../components'
 import type { Signals } from '../signals'
 import { Collision } from '../collision'
 import { Debug } from '../debug'
-import { Point } from 'pixi.js'
 
 export class CollisionSystem<C extends Components, S extends Signals> extends System<C, S> {
   private collisions: CollisionSystem.Instance[] = []

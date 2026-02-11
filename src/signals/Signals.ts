@@ -6,6 +6,7 @@ export interface Signals {
   'entity-added': Signal.EntityAdded
   'entity-removed': Signal.EntityRemoved
   'screen-resized': Signal.ScreenResized
+  action: Signal.Action
   // Debug
   'debug-physics-enabled': Debug.Signal.PhysicsEnabled
 }

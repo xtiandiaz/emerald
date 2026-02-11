@@ -2,11 +2,15 @@ import { type ContainerChild, type ContainerEvents, Sprite } from 'pixi.js'
 import { type EntityConstructor, Entity, Stage, System, Screen, type Disconnectable } from '../core'
 import type { Components } from '../components'
 import type { Signals } from '../signals'
-import { Input } from '../input'
 import { Debug } from '../debug'
 import { RayCaster } from '../collision/RayCaster'
+import { Input } from '../input'
 
-export abstract class Scene<C extends Components, S extends Signals>
+export abstract class Scene<
+    C extends Components,
+    S extends Signals,
+    A extends Record<keyof A, string>,
+  >
   extends Stage<C>
   implements Input.Provider
 {
@@ -18,7 +22,7 @@ export abstract class Scene<C extends Components, S extends Signals>
   private debugDisplay?: Debug.Display
 
   constructor(
-    protected readonly systems: System<C, S>[],
+    protected readonly systems: System<C, S, A>[],
     protected readonly options?: Partial<Scene.Options>,
   ) {
     super()
