@@ -1,6 +1,6 @@
-import { Container, Rectangle, RenderLayer } from 'pixi.js'
+import { Container, RenderLayer } from 'pixi.js'
 import { Entity, SimpleEntity, type EntityComponent, type EntityConstructor } from './'
-import { Collider, type Components, RigidBody } from '../components'
+import { Camera, Collider, type Components, RigidBody } from '../components'
 
 export class Stage<C extends Components> extends Container {
   readonly _colliders: EntityComponent<Collider>[] = []
@@ -17,12 +17,19 @@ export class Stage<C extends Components> extends Container {
       new RenderLayer(),
     ]),
   )
-  private _mainCameraId?: number
+  private currentCameraId?: number
 
   constructor() {
     super()
 
     this.renderLayers.forEach((rl) => this.addChild(rl))
+  }
+
+  get currentCamera(): EntityComponent<Camera> | undefined {
+    if (this.currentCameraId && this.hasComponent('camera', this.currentCameraId)) {
+      return [this.currentCameraId, this.getComponent('camera', this.currentCameraId)!]
+    }
+    return undefined
   }
 
   deinit() {
@@ -212,6 +219,14 @@ export class Stage<C extends Components> extends Container {
     }
 
     return true
+  }
+
+  setCurrentCamera(entityId: number) {
+    if (this.id2ComponentsMap.has(entityId) && this.id2ComponentsMap.get(entityId)!.has('camera')) {
+      this.currentCameraId = entityId
+    } else {
+      console.warn(`Undefined Camera for entity-id ${entityId}`)
+    }
   }
 
   private deleteTaggedId(tag: string, entityId: number) {

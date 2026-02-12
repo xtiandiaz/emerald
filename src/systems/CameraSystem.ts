@@ -1,55 +1,55 @@
-import { Point, type PointData, type Rectangle } from 'pixi.js'
-import { Camera, type Components } from '../components'
-import { Stage, System, Screen, type EntityConstructor, type EntityComponent } from '../core'
+import { Point, type Size } from 'pixi.js'
+import { type Components } from '../components'
+import { Stage, System, Screen } from '../core'
 import type { Signals } from '../signals'
 import { EMath } from '../extras'
 
 export class CameraSystem<C extends Components, S extends Signals> extends System<C, S> {
-  private targetPositions = new Map<number, Point>()
-
-  // setMainCamera(entityId: number): boolean
+  private targetPosition = new Point()
+  private zoomedEntityPos = new Point()
+  private zoom = 1
 
   update(stage: Stage<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
-    const eCameras = stage.getEntityComponents('camera')
-    let current: { id: number; camera: Camera } | undefined
+    if (!stage.currentCamera) {
+      return
+    }
+    const [id, camera] = stage.currentCamera
+    const entity = stage.getEntity(id)!
 
-    for (const [id, camera] of eCameras) {
-      const entity = stage.getEntity(id)!
-
-      this.setTargetPosition(id, entity.position, camera.offset, stage.boundsArea)
-
-      if (camera.options?.isCurrent) {
-        current = { id, camera }
-      }
+    entity.position.multiplyScalar(camera.zoom, this.zoomedEntityPos)
+    const zoomedBoundsSize: Size = {
+      width: stage.boundsArea.width * camera.zoom,
+      height: stage.boundsArea.height * camera.zoom,
     }
 
-    if (current) {
-      const targetPos = this.targetPositions.get(current.id)!
-      const ease = current.camera.positionEase
+    this.targetPosition.x =
+      zoomedBoundsSize.width < Screen.width
+        ? (Screen.width - zoomedBoundsSize.width) * 0.5
+        : EMath.clamp(
+            -this.zoomedEntityPos.x + Screen.halfWidth,
+            -zoomedBoundsSize.width + Screen.width,
+            0,
+          ) + camera.offset.x
 
-      if (ease) {
-        stage.position.x += (targetPos.x - stage.position.x) / ease
-        stage.position.y += (targetPos.y - stage.position.y) / ease
-      } else {
-        stage.position.copyFrom(targetPos)
-      }
+    this.targetPosition.y =
+      zoomedBoundsSize.height < Screen.height
+        ? (Screen.height - zoomedBoundsSize.height) * 0.5
+        : EMath.clamp(
+            -this.zoomedEntityPos.y + Screen.halfHeight,
+            -zoomedBoundsSize.height + Screen.height,
+            0,
+          ) + camera.offset.y
+
+    const speed = camera.speed
+    if (speed) {
+      this.zoom += ((camera.zoom - this.zoom) / speed) * dT
+      stage.position.x += ((this.targetPosition.x - stage.position.x) / speed) * dT
+      stage.position.y += ((this.targetPosition.y - stage.position.y) / speed) * dT
+    } else {
+      this.zoom = camera.zoom
+      stage.position.copyFrom(this.targetPosition)
     }
-  }
 
-  private setTargetPosition(
-    id: number,
-    entityPos: PointData,
-    offset: PointData,
-    bounds: Rectangle,
-  ) {
-    const halfSW = Screen.width * 0.5
-    const halfSH = Screen.height * 0.5
-    const x = EMath.clamp(-entityPos.x + halfSW, -bounds.width + Screen.width, 0) + offset.x
-    const y = EMath.clamp(-entityPos.y + halfSH, -bounds.height + Screen.height, 0) + offset.y
-
-    if (!this.targetPositions.has(id)) {
-      this.targetPositions.set(id, new Point())
-    }
-    this.targetPositions.get(id)!.set(x, y)
+    stage.scale.set(this.zoom)
   }
 }

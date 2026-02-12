@@ -87,8 +87,7 @@ export abstract class Game<
   }
 
   private onResized(width: number, height: number) {
-    Screen._width = width
-    Screen._height = height
+    Screen._setSize(width, height)
 
     this.signalController.queue('screen-resized', { width, height })
   }
