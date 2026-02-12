@@ -49,6 +49,8 @@ export abstract class Game<
   }
 
   async playScene<T extends Scene<C, S>>(type: new () => T) {
+    // TODO Add optional transition sequence
+
     if (this.scene) {
       this.stage.removeChild(this.scene)
       this.scene.deinit()

@@ -2,7 +2,11 @@ import type { Disconnectable } from '../core'
 import type { Signal } from '.'
 import { Debug } from '../debug'
 
-export interface Signals {
+export type _Signals = {
+  [key: string]: Signal
+}
+
+export interface Signals extends _Signals {
   'entity-added': Signal.EntityAdded
   'entity-removed': Signal.EntityRemoved
   'screen-resized': Signal.ScreenResized

@@ -1,4 +1,4 @@
-import { Container, RenderLayer } from 'pixi.js'
+import { Container, Rectangle, RenderLayer } from 'pixi.js'
 import { Entity, SimpleEntity, type EntityComponent, type EntityConstructor } from './'
 import { Collider, type Components, RigidBody } from '../components'
 
@@ -17,6 +17,7 @@ export class Stage<C extends Components> extends Container {
       new RenderLayer(),
     ]),
   )
+  private _mainCameraId?: number
 
   constructor() {
     super()
@@ -149,14 +150,16 @@ export class Stage<C extends Components> extends Container {
     return this.id2ComponentsMap.get(entityId)?.get(key) as C[K]
   }
 
-  getComponents<K extends keyof C>(key: K): C[K][] {
-    const components: C[K][] = []
-    this.id2ComponentsMap.forEach((cMap) => {
+  getEntityComponents<K extends keyof C>(key: K): EntityComponent<C[K]>[] {
+    const eCs: EntityComponent<C[K]>[] = []
+
+    this.id2ComponentsMap.forEach((cMap, entityId) => {
       if (cMap.has(key)) {
-        components.push(cMap.get(key)! as C[K])
+        eCs.push([entityId, cMap.get(key)! as C[K]])
       }
     })
-    return components
+
+    return eCs
   }
 
   addComponents(entityId: number, components: Partial<C>): Entity<C> | undefined {

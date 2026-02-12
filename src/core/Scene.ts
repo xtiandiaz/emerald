@@ -1,4 +1,4 @@
-import { type ContainerChild, type ContainerEvents, Sprite } from 'pixi.js'
+import { type ContainerChild, type ContainerEvents, Rectangle, Sprite } from 'pixi.js'
 import { type EntityConstructor, Entity, Stage, System, Screen, type Disconnectable } from '../core'
 import type { Components } from '../components'
 import type { Signals } from '../signals'
@@ -6,11 +6,7 @@ import { Debug } from '../debug'
 import { RayCaster } from '../collision/RayCaster'
 import { Input } from '../input'
 
-export abstract class Scene<
-    C extends Components,
-    S extends Signals,
-    A extends Record<keyof A, string>,
-  >
+export abstract class Scene<C extends Components, S extends Signals>
   extends Stage<C>
   implements Input.Provider
 {
@@ -22,10 +18,12 @@ export abstract class Scene<
   private debugDisplay?: Debug.Display
 
   constructor(
-    protected readonly systems: System<C, S, A>[],
+    protected readonly systems: System<C, S>[],
     protected readonly options?: Partial<Scene.Options>,
   ) {
     super()
+
+    this.boundsArea = options?.bounds ?? new Rectangle(0, 0, Screen.width, Screen.height)
 
     this.inputPad.eventMode = 'static'
     this.getLayer(Stage.Layer.UI).attach(this.inputPad)
@@ -139,6 +137,7 @@ export abstract class Scene<
 
 export namespace Scene {
   export interface Options {
+    bounds: Rectangle
     debug: Debug.Options.Scene
   }
 }

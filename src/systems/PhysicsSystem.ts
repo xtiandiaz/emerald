@@ -34,7 +34,7 @@ export class PhysicsSystem<C extends Components, S extends Signals> extends Coll
 
     collider._transform.setFromMatrix(body._transform.matrix)
 
-    // TODO univify the transform if possible, or move the update of the entity's transform to somewhere else
+    // TODO unify the transform if possible, or move the update of the entity's transform to somewhere else
     entity.setFromMatrix(body._transform.matrix)
   }
 
