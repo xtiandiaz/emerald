@@ -297,4 +297,4 @@ Again, please find more practical examples of these concepts at the [Emerald Che
 
 # Closing words... for now
 
-This is an personal, ongoing project, extended and iterated at my own pace, and driven at times by whims. However, please feel free to use and to contribute if you find value in it.
+This is an personal, ongoing project, extended and iterated at my own pace, and driven at times by whims. However, please feel free to use and to contribute if you also find value in it.
