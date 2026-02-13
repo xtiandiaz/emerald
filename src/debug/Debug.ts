@@ -85,7 +85,7 @@ export namespace Debug {
         const s = this.stats
         s.colliderCount = stage._colliders.length
         s.bodyCount = stage._colliders.reduce(
-          (count, c) => (stage.hasComponent('rigid-body', c[0]) ? count++ : count),
+          (count, c) => (stage.hasComponent('rigid-body', c.entityId) ? count++ : count),
           0,
         )
 
