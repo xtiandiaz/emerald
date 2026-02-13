@@ -1,6 +1,6 @@
 ![Logo](./_img/logo.png)
 
-A simple **WebGL game framework** built on top of [PixiJS](https://github.com/pixijs/pixijs/) for optimal rendering, and written completely in TypeScript.
+A simple **WebGL 2D Game Framework** built on top of [PixiJS](https://github.com/pixijs/pixijs/) for optimal rendering, and written completely in TypeScript.
 
 # Examples (WIP)
 
