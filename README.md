@@ -17,8 +17,9 @@ A simple **WebGL 2D Game Framework** built on top of [PixiJS](https://github.com
 
 ### Pending (but in the list):
 
-- Entity pooling (to create and reuse particular Entities).
-- A simple visual editor to outline Scenes more easily.
+- Entity pooling (to create and reuse particular Entities)
+- A simple visual editor to outline Scenes more easily
+- Distribute the framework as an NPM package (when it gets tested and mature)
 
 # Getting Started
 
