@@ -28,16 +28,13 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
     const colliders = stage._colliders
 
     let rcA: RayCast | undefined, rcB: RayCast | undefined
-    // TODO Optimize by passing reference values
-    // let castableRays: Collision.Ray[] | undefined
-    // let ray = new Collision.Ray(new Point(), new Point(), 0)
 
     this.collisions.length = 0
 
     this.debugGraphics?.clear()
 
     for (let i = 0; i < colliders.length; i++) {
-      const [id, collider] = colliders[i]!
+      const { entityId: id, component: collider } = colliders[i]!
 
       this.prepareCollider(collider, stage.getEntity(id)!, dT)
 
@@ -47,11 +44,11 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
     }
 
     for (let i = 0; i < colliders.length; i++) {
-      const [idA, A] = colliders[i]!
+      const { entityId: idA, component: A } = colliders[i]!
       rcA = stage.getComponent('ray-cast', idA)
 
       for (let j = i + 1; j < colliders.length; j++) {
-        const [idB, B] = colliders[j]!
+        const { entityId: idB, component: B } = colliders[j]!
 
         if (A.canCollide(B, this.options.layerMap)) {
           const contact = A.findContact(B, this.options.findsContactPoints)

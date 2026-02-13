@@ -12,7 +12,11 @@ export namespace Range {
 
 export interface Component {}
 
-export type EntityComponent<T extends Component> = [entityId: number, component: T]
+// export type EntityComponent<T extends Component> = [entityId: number, component: T]
+export interface EntityComponent<T extends Component> {
+  entityId: number
+  component: T
+}
 
 export interface Disconnectable {
   disconnect(): void

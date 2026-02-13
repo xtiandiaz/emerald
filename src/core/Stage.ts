@@ -1,4 +1,4 @@
-import { Container, RenderLayer } from 'pixi.js'
+import { Container, Point, RenderLayer } from 'pixi.js'
 import { Entity, SimpleEntity, type EntityComponent, type EntityConstructor } from './'
 import { Camera, Collider, type Components, RigidBody } from '../components'
 
@@ -17,7 +17,7 @@ export class Stage<C extends Components> extends Container {
       new RenderLayer(),
     ]),
   )
-  private currentCameraId?: number
+  private currentCameraEntityId?: number
 
   constructor() {
     super()
@@ -26,8 +26,11 @@ export class Stage<C extends Components> extends Container {
   }
 
   get currentCamera(): EntityComponent<Camera> | undefined {
-    if (this.currentCameraId && this.hasComponent('camera', this.currentCameraId)) {
-      return [this.currentCameraId, this.getComponent('camera', this.currentCameraId)!]
+    if (this.currentCameraEntityId && this.hasComponent('camera', this.currentCameraEntityId)) {
+      return {
+        entityId: this.currentCameraEntityId,
+        component: this.getComponent('camera', this.currentCameraEntityId)!,
+      }
     }
     return undefined
   }
@@ -149,6 +152,10 @@ export class Stage<C extends Components> extends Container {
     return this.tag2IdsMap.get(tag)
   }
 
+  getPosition(entityId: number): Point | undefined {
+    return this.id2EntityMap.get(entityId)?.position
+  }
+
   hasComponent<K extends keyof C>(key: K, entityId: number): boolean {
     return this.id2ComponentsMap.get(entityId)?.has(key) ?? false
   }
@@ -162,7 +169,7 @@ export class Stage<C extends Components> extends Container {
 
     this.id2ComponentsMap.forEach((cMap, entityId) => {
       if (cMap.has(key)) {
-        eCs.push([entityId, cMap.get(key)! as C[K]])
+        eCs.push({ entityId, component: cMap.get(key)! as C[K] })
       }
     })
 
@@ -223,7 +230,7 @@ export class Stage<C extends Components> extends Container {
 
   setCurrentCamera(entityId: number) {
     if (this.id2ComponentsMap.has(entityId) && this.id2ComponentsMap.get(entityId)!.has('camera')) {
-      this.currentCameraId = entityId
+      this.currentCameraEntityId = entityId
     } else {
       console.warn(`Undefined Camera for entity-id ${entityId}`)
     }
@@ -239,11 +246,11 @@ export class Stage<C extends Components> extends Container {
 
   private resetColliderEntry(instance: Collider, entityId: number) {
     this.deleteColliderEntry(entityId)
-    this._colliders.push([entityId, instance])
+    this._colliders.push({ entityId, component: instance })
   }
 
   private deleteColliderEntry(entityId: number) {
-    const colliderIndex = this._colliders.findIndex(([id]) => id == entityId)
+    const colliderIndex = this._colliders.findIndex(({ entityId: id }) => id == entityId)
     if (colliderIndex >= 0) {
       this._colliders.splice(colliderIndex, 1)
     }
