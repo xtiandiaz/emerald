@@ -58,7 +58,7 @@ export abstract class Scene<C extends Components, S extends Signals>
     this.onResized()
   }
 
-  deinit(): void {
+  async deinit(): Promise<void> {
     super.deinit()
 
     this.debugDisplay?.deinit()

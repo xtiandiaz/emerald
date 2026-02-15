@@ -53,7 +53,7 @@ export abstract class Game<
 
     if (this.scene) {
       this.stage.removeChild(this.scene)
-      this.scene.deinit()
+      await this.scene.deinit()
     }
 
     const nextScene = new type()
