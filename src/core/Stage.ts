@@ -256,7 +256,7 @@ export class Stage<C extends Components> extends Container {
     }
   }
 
-  private onComponentAdded<K extends keyof C>(key: K, component: C[K], entity: Entity<C>) {
+  private onComponentAdded<K extends keyof C>(_: K, component: C[K], entity: Entity<C>) {
     if (component instanceof Collider) {
       this.resetColliderEntry(component, entity.id)
 

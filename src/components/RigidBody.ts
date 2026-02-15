@@ -79,7 +79,7 @@ export class RigidBody implements Component {
     if (this.isStatic) return
 
     this._inertia = EMath.clamp(value, 0, Infinity)
-    this._invInertia = this._invInertia > 0 ? 1 / this._invInertia : 0
+    this._invInertia = this._inertia > 0 ? 1 / this._inertia : 0
   }
 
   get direction(): Vector {

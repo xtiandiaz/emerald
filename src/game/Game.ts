@@ -35,6 +35,7 @@ export abstract class Game<
 
   async init(options: Partial<Game.Options>): Promise<void> {
     await super.init(options)
+
     await this.load?.()
 
     this.signalController = new SignalController()

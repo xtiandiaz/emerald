@@ -19,8 +19,6 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
   }
 
   prepareCollider(collider: Collider, entity: Entity<C>, dT: number): void {
-    collider.collisions.clear()
-
     collider._transform.setFromMatrix(entity.getGlobalTransform())
   }
 
@@ -35,6 +33,8 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
 
     for (let i = 0; i < colliders.length; i++) {
       const { entityId: id, component: collider } = colliders[i]!
+
+      collider.collisions.clear()
 
       this.prepareCollider(collider, stage.getEntity(id)!, dT)
 

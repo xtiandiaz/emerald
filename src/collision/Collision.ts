@@ -29,8 +29,11 @@ export namespace Collision {
       } else {
         out_ray.collisionMask = this.collisionMask
       }
-      matrix.apply(this.origin, out_ray.origin)
-      matrix.apply(this.target, out_ray.target)
+      // TODO Figure out how to prevent rotation or to incorporate it correctly
+      // matrix.apply(this.origin, out_ray.origin)
+      // matrix.apply(this.target, out_ray.target)
+      this.origin.add({ x: matrix.tx, y: matrix.ty }, out_ray.origin)
+      this.target.add({ x: matrix.tx, y: matrix.ty }, out_ray.target)
 
       return out_ray
     }
@@ -132,15 +135,17 @@ export namespace Collision {
       const axis = new Vector()
       ray.target.subtract(ray.origin, axis).normalize(axis)
 
-      ray.intersects =
-        Geometry.hasProjectionOverlap(this.getProjectionRange(axis), {
-          min: axis.dot(ray.origin),
-          max: axis.dot(ray.target),
-        }) &&
-        Geometry.hasProjectionOverlap(
-          this.getProjectionRange(axis.orthogonalize(axis)),
-          Range.point(axis.dot(ray.origin)),
-        )
+      ray.intersects = Geometry.hasProjectionOverlap(this.getProjectionRange(axis), {
+        min: axis.dot(ray.origin),
+        max: axis.dot(ray.target),
+      })
+
+      axis.orthogonalize(axis)
+
+      ray.intersects &&= Geometry.hasProjectionOverlap(
+        this.getProjectionRange(axis),
+        Range.point(axis.dot(ray.origin)),
+      )
     }
 
     abstract getProjectionRange(axis: Vector): Range

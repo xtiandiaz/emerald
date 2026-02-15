@@ -58,8 +58,12 @@ export abstract class Scene<C extends Components, S extends Signals>
     this.onResized()
   }
 
+  async unload?(): Promise<void>
+
   async deinit(): Promise<void> {
     super.deinit()
+
+    await this.unload?.()
 
     this.debugDisplay?.deinit()
 
