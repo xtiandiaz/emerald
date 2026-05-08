@@ -1,4 +1,4 @@
-import { Point, type PointData } from 'pixi.js'
+import { Container, Point, type PointData } from 'pixi.js'
 
 export { Point as Vector, type PointData as VectorData }
 
@@ -10,12 +10,15 @@ export namespace Range {
   export const point = (minAndMax: number) => ({ min: minAndMax, max: minAndMax })
 }
 
-export interface Component {}
+export interface Component {
+  key: string
+  container?: Container
+}
 
-// export type EntityComponent<T extends Component> = [entityId: number, component: T]
-export interface EntityComponent<T extends Component> {
-  entityId: number
-  component: T
+export interface Entity {
+  readonly id: number
+  components: Map<string, Component>
+  tag?: string
 }
 
 export interface Disconnectable {

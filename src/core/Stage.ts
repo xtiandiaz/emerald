@@ -1,16 +1,18 @@
 import { Container, Point, RenderLayer } from 'pixi.js'
-import { Entity, SimpleEntity, type EntityComponent, type EntityConstructor } from './'
-import { Camera, Collider, type Components, RigidBody } from '../components'
+import { Component, Entity } from './'
+import { Camera, Collider } from '../components'
 
-export class Stage<C extends Components> extends Container {
-  readonly _colliders: EntityComponent<Collider>[] = []
+export class Stage extends Container {
+  // readonly _colliders: EntityComponent<Collider>[] = []
 
   private nextEntityId = 1
-  private id2TagMap = new Map<number, string>()
-  private tag2IdsMap = new Map<string, number[]>()
-  private id2EntityMap = new Map<number, Entity<C>>()
-  private type2IdsMap = new Map<string, number[]>()
-  private id2ComponentsMap = new Map<number, Map<keyof C, C[keyof C]>>()
+  private entities = new Map<number, Entity>()
+  private tags = new Map<string, Set<number>>()
+  // private id2TagMap = new Map<number, string>()
+  // private tag2IdsMap = new Map<string, number[]>()
+  // private id2EntityMap = new Map<number, Entity<C>>()
+  // private type2IdsMap = new Map<string, number[]>()
+  // private id2ComponentsMap = new Map<number, Map<keyof C, C[keyof C]>>()
   private renderLayers = new Map(
     [Stage.Layer.ENTITIES, Stage.Layer.UI, Stage.Layer.DEBUG].map((key) => [
       key,
@@ -25,21 +27,21 @@ export class Stage<C extends Components> extends Container {
     this.renderLayers.forEach((rl) => this.addChild(rl))
   }
 
-  get currentCamera(): EntityComponent<Camera> | undefined {
-    if (this.currentCameraEntityId && this.hasComponent('camera', this.currentCameraEntityId)) {
-      return {
-        entityId: this.currentCameraEntityId,
-        component: this.getComponent('camera', this.currentCameraEntityId)!,
-      }
-    }
-    return undefined
-  }
+  // get currentCamera(): EntityComponent<Camera> | undefined {
+  //   if (this.currentCameraEntityId && this.hasComponent('camera', this.currentCameraEntityId)) {
+  //     return {
+  //       entityId: this.currentCameraEntityId,
+  //       component: this.getComponent('camera', this.currentCameraEntityId)!,
+  //     }
+  //   }
+  //   return undefined
+  // }
 
   deinit() {
-    this._colliders.length = 0
-    this.id2EntityMap.clear()
-    this.type2IdsMap.clear()
-    this.id2ComponentsMap.clear()
+    // this._colliders.length = 0
+    // this.id2EntityMap.clear()
+    // this.type2IdsMap.clear()
+    // this.id2ComponentsMap.clear()
 
     this.destroy({ children: true, texture: true, textureSource: true })
   }
@@ -48,228 +50,153 @@ export class Stage<C extends Components> extends Container {
     return this.renderLayers.get(key)!
   }
 
-  createEntity<T extends Entity<C>>(type: EntityConstructor<C, T>): T {
+  createEntity(tag?: string): number {
     const id = this.nextEntityId++
-    const entity = new type(
+
+    this.entities.set(id, {
       id,
-      (key) => this.hasComponent(key, id),
-      (key) => this.getComponent(key, id),
-      (entries) => this.addComponents(id, entries)!,
-      (key) => this.removeComponent(key, id),
-      (tag) => this.tag(id, tag)!,
-      () => this.getEntityTag(id),
-    )
+      tag,
+      components: new Map<string, Component>(),
+    })
 
-    this.id2EntityMap.set(id, entity)
-    this.id2ComponentsMap.set(id, new Map())
-
-    if (!this.type2IdsMap.has(type.name)) {
-      this.type2IdsMap.set(type.name, [])
+    if (tag) {
+      this.tag(id, tag)
     }
-    this.type2IdsMap.get(type.name)!.push(id)
 
-    entity.init()
+    // this.getLayer(Stage.Layer.ENTITIES).attach(entity)
+    // this.addChild(entity)
 
-    this.getLayer(Stage.Layer.ENTITIES).attach(entity)
-    this.addChild(entity)
-
-    return entity
+    return id
   }
 
-  createSimpleEntity(options?: Partial<SimpleEntity.Options>): SimpleEntity<C> {
-    const entity = this.createEntity(SimpleEntity<C>)
-
-    if (options?.tag) this.tag(entity.id, options.tag)
-    if (options?.position) entity.position = options.position
-    if (options?.rotation) entity.rotation = options.rotation
-    if (options?.scale)
-      typeof options.scale == 'number'
-        ? entity.scale.set(options.scale)
-        : entity.scale.copyFrom(options.scale)
-    if (options?.children) entity.addChild(...options.children)
-
-    options?.onInit?.(entity)
-
-    return entity
+  tag(entityId: number, tag: string) {
+    const e = this.entities.get(entityId)
+    if (!e) {
+      return
+    }
+    const prevTag = e.tag
+    if (prevTag) {
+      this.tags.get(prevTag)?.delete(e.id)
+    }
+    if (!this.tags.has(tag)) {
+      this.tags.set(tag, new Set<number>())
+    }
+    this.tags.get(tag)!.add(e.id)
   }
 
   hasEntity(id: number): boolean {
-    return this.id2ComponentsMap.has(id)
+    return this.entities.has(id)
   }
 
-  hasEntitiesByTag(tag: string): boolean {
-    return (this.tag2IdsMap.get(tag)?.length ?? 0) > 0
+  hasEntityByTag(tag: string): boolean {
+    return (this.tags.get(tag)?.size ?? 0) > 0
   }
 
-  getEntity<T extends Entity<C>>(id: number): T | undefined {
-    return this.id2EntityMap.get(id) as T
+  getTag(entityId: number): string | undefined {
+    return this.entities.values().find((e) => e.id === entityId)?.tag
   }
 
-  getEntitiesByType<T extends Entity<C>>(type: EntityConstructor<C, T>): T[] {
-    return this.type2IdsMap.get(type.name)?.map((id) => this.id2EntityMap.get(id)! as T) ?? []
+  getTaggedEntities(tag: string): number[] {
+    return [...(this.tags.get(tag) ?? [])]
   }
 
-  getFirstEntityByType<T extends Entity<C>>(type: EntityConstructor<C, T>): T | undefined {
-    const id = this.type2IdsMap.get(type.name)?.[0]
-
-    return id ? (this.id2EntityMap.get(id) as T) : undefined
-  }
-
-  getEntitiesByTag(tag: string): Entity<C>[] {
-    return this.tag2IdsMap.get(tag)?.map((id) => this.id2EntityMap.get(id)!) ?? []
-  }
-
-  getFirstEntityByTag(tag: string): Entity<C> | undefined {
-    const id = this.tag2IdsMap.get(tag)?.[0]
-
-    return id ? this.id2EntityMap.get(id) : undefined
-  }
-
-  tag(entityId: number, tag: string): Entity<C> | undefined {
-    const entity = this.id2EntityMap.get(entityId)
-    if (!entity) {
-      return
-    }
-    const prevTag = this.id2TagMap.get(entityId)
-    if (prevTag) {
-      this.deleteTaggedId(tag, entityId)
-    }
-    this.id2TagMap.set(entityId, tag)
-    if (this.tag2IdsMap.has(tag)) {
-      this.tag2IdsMap.get(tag)!.push(entityId)
-    } else {
-      this.tag2IdsMap.set(tag, [entityId])
-    }
-
-    return entity
-  }
-
-  getEntityTag(id: number): string | undefined {
-    return this.id2TagMap.get(id)
-  }
-
-  getTaggedIds(tag: string): number[] | undefined {
-    return this.tag2IdsMap.get(tag)
-  }
-
-  getPosition(entityId: number): Point | undefined {
-    return this.id2EntityMap.get(entityId)?.position
-  }
-
-  hasComponent<K extends keyof C>(key: K, entityId: number): boolean {
-    return this.id2ComponentsMap.get(entityId)?.has(key) ?? false
-  }
-
-  getComponent<K extends keyof C>(key: K, entityId: number): C[K] | undefined {
-    return this.id2ComponentsMap.get(entityId)?.get(key) as C[K]
-  }
-
-  getEntityComponents<K extends keyof C>(key: K): EntityComponent<C[K]>[] {
-    const eCs: EntityComponent<C[K]>[] = []
-
-    this.id2ComponentsMap.forEach((cMap, entityId) => {
-      if (cMap.has(key)) {
-        eCs.push({ entityId, component: cMap.get(key)! as C[K] })
-      }
-    })
-
-    return eCs
-  }
-
-  addComponents(entityId: number, components: Partial<C>): Entity<C> | undefined {
-    const entity = this.id2EntityMap.get(entityId)
-    if (!entity) {
+  addComponent(entityId: number, ...components: Component[]) {
+    const e = this.entities.get(entityId)
+    if (!e) {
       console.error('Undefined entity', entityId)
       return
     }
-    const componentsMap = this.id2ComponentsMap.get(entityId)!
-    const entries = Object.entries(components) as [keyof C, C[keyof C]][]
-    for (const [key, component] of entries) {
-      componentsMap.set(key, component)
+    for (const c of components) {
+      e.components.set(c.key, c)
 
-      this.onComponentAdded(key, component, entity)
+      if (c instanceof Container) {
+        this.addChild(c)
+      } else if (c.container) {
+        this.addChild(c.container)
+      }
     }
-
-    return this.id2EntityMap.get(entityId)!
   }
 
-  removeComponent<K extends keyof C>(key: K, entityId: number): boolean {
-    const c2typeMap = this.id2ComponentsMap.get(entityId)
-    if (!c2typeMap) {
+  hasComponent(key: string, entityId: number): boolean {
+    return this.entities.get(entityId)?.components.has(key) ?? false
+  }
+
+  getComponent<T extends Component>(key: string, entityId: number): T | undefined {
+    return this.entities.get(entityId)?.components.get(key) as T
+  }
+
+  removeComponent(key: string, entityId: number): boolean {
+    const e = this.entities.get(entityId)
+    if (!e) {
       console.error('Undefined entity', entityId)
       return false
     }
-
-    const component = c2typeMap.get(key)
-    if (component instanceof Collider) {
-      this.deleteColliderEntry(entityId)
+    const c = e.components.get(key)
+    if (c instanceof Container) {
+      this.removeChild(c)
+    } else if (c?.container) {
+      this.removeChild(c.container)
     }
 
-    return c2typeMap.delete(key)
+    // const c = e.components.get(key)
+    // if (c instanceof Collider) {
+    //   this.deleteColliderEntry(entityId)
+    // }
+
+    return e.components.delete(key)
   }
 
   removeEntity(id: number): boolean {
-    const entity = this.id2EntityMap.get(id)
-    if (!entity) {
+    const e = this.entities.get(id)
+    if (!e) {
       return false
     }
-    this.removeChild(entity)
-    this.id2EntityMap.delete(id)
-    this.id2ComponentsMap.delete(id)
-
-    this.deleteColliderEntry(id)
-
-    const tag = this.id2TagMap.get(id)
-    if (tag) {
-      this.deleteTaggedId(tag, id)
-      this.id2TagMap.delete(id)
+    for (const [, c] of e.components) {
+      if (c instanceof Container) {
+        this.removeChild(c)
+      }
+    }
+    if (e.tag) {
+      this.tags.get(e.tag)?.delete(e.id)
     }
 
-    return true
+    // this.deleteColliderEntry(id)
+
+    return this.entities.delete(id)
   }
 
   setCurrentCamera(entityId: number) {
-    if (this.id2ComponentsMap.has(entityId) && this.id2ComponentsMap.get(entityId)!.has('camera')) {
-      this.currentCameraEntityId = entityId
-    } else {
-      console.warn(`Undefined Camera for entity-id ${entityId}`)
-    }
+    // if (this.id2ComponentsMap.has(entityId) && this.id2ComponentsMap.get(entityId)!.has('camera')) {
+    //   this.currentCameraEntityId = entityId
+    // } else {
+    //   console.warn(`Undefined Camera for entity-id ${entityId}`)
+    // }
   }
 
-  private deleteTaggedId(tag: string, entityId: number) {
-    const taggedIds = this.tag2IdsMap.get(tag)!
-    const index = taggedIds.findIndex((id) => id == entityId)
-    if (index >= 0) {
-      taggedIds.splice(index)
-    }
-  }
+  // private resetColliderEntry(instance: Collider, entityId: number) {
+  //   this.deleteColliderEntry(entityId)
+  //   this._colliders.push({ entityId, component: instance })
+  // }
 
-  private resetColliderEntry(instance: Collider, entityId: number) {
-    this.deleteColliderEntry(entityId)
-    this._colliders.push({ entityId, component: instance })
-  }
+  // private deleteColliderEntry(entityId: number) {
+  //   const colliderIndex = this._colliders.findIndex(({ entityId: id }) => id == entityId)
+  //   if (colliderIndex >= 0) {
+  //     this._colliders.splice(colliderIndex, 1)
+  //   }
+  // }
 
-  private deleteColliderEntry(entityId: number) {
-    const colliderIndex = this._colliders.findIndex(({ entityId: id }) => id == entityId)
-    if (colliderIndex >= 0) {
-      this._colliders.splice(colliderIndex, 1)
-    }
-  }
-
-  private onComponentAdded<K extends keyof C>(_: K, component: C[K], entity: Entity<C>) {
-    if (component instanceof Collider) {
-      this.resetColliderEntry(component, entity.id)
-
-      this.getComponent('rigid-body', entity.id)?.resetAreaProperties(component._physicsProperties)
-    } else if (component instanceof RigidBody) {
-      component._transform.setFromMatrix(entity.getGlobalTransform())
-
-      const collider = this.getComponent('collider', entity.id)
-      if (collider) {
-        component.resetAreaProperties(collider._physicsProperties)
-      }
-    }
-  }
+  // private onComponentAdded<K extends keyof C>(_: K, component: C[K], entity: Entity<C>) {
+  // if (component instanceof Collider) {
+  //   this.resetColliderEntry(component, entity.id)
+  //   this.getComponent('rigid-body', entity.id)?.resetAreaProperties(component._physicsProperties)
+  // } else if (component instanceof RigidBody) {
+  //   component._transform.setFromMatrix(entity.getGlobalTransform())
+  //   const collider = this.getComponent('collider', entity.id)
+  //   if (collider) {
+  //     component.resetAreaProperties(collider._physicsProperties)
+  //   }
+  // }
+  // }
 }
 
 export namespace Stage {

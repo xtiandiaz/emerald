@@ -1,7 +1,6 @@
-import { ObservablePoint, Point, Rectangle, type PointData } from 'pixi.js'
+import { ObservablePoint, Point, type PointData } from 'pixi.js'
 import { Vector, type VectorData } from '../core'
 import { EMath } from '../extras'
-import 'pixi.js/math-extras'
 
 declare global {
   interface Vector2Math {
@@ -15,12 +14,6 @@ declare global {
 
     orthogonalize<T extends VectorData = Vector>(out_vector?: T): T
   }
-}
-
-declare module 'pixi.js' {
-  // interface Rectangle {
-  //   size: Size
-  // }
 }
 
 Point.prototype.clamp = ObservablePoint.prototype.clamp = function <T extends PointData = Point>(
@@ -102,12 +95,3 @@ Vector.prototype.orthogonalize = function <T extends VectorData = Vector>(this, 
 
   return out_vector
 }
-
-// Rectangle.prototype.size = function (this, out_size?: Size): Size {
-//   if (out_size) {
-//     out_size.width = this.width
-//     out_size.height = this.height
-//     return out_size
-//   }
-//   return { width: this.width, height: this.height }
-// }

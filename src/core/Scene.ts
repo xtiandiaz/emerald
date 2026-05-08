@@ -1,29 +1,23 @@
-import { type ContainerChild, type ContainerEvents, Rectangle, Sprite } from 'pixi.js'
-import { type EntityConstructor, Entity, Stage, System, Screen, type Disconnectable } from '../core'
-import type { Components } from '../components'
+import { type ContainerChild, type ContainerEvents, Rectangle, Renderer, Sprite } from 'pixi.js'
+import { Entity, Stage, System, Screen, type Disconnectable } from '../core'
 import type { Signals } from '../signals'
 import { Debug } from '../debug'
-import { RayCaster } from '../collision/RayCaster'
 import { Input } from '../input'
 
-export abstract class Scene<C extends Components, S extends Signals>
-  extends Stage<C>
-  implements Input.Provider
-{
+export abstract class Scene extends Stage implements Input.Provider {
   protected connections: Disconnectable[] = []
 
   private inputPad = new Sprite()
-  private rayCaster = new RayCaster(this._colliders)
-  private signals?: Signals.Bus<S>
+  // private rayCaster = new RayCaster(this._colliders)
+  // private signals?: Signals.Bus<S>
   private debugDisplay?: Debug.Display
 
-  constructor(
-    protected readonly systems: System<C, S>[],
-    protected readonly options?: Partial<Scene.Options>,
-  ) {
+  constructor() {
+    // protected readonly systems: System<C, S>[],
+    // protected readonly options?: Partial<Scene.Options>,
     super()
 
-    this.boundsArea = options?.bounds ?? new Rectangle(0, 0, Screen.width, Screen.height)
+    // this.boundsArea = options?.bounds ?? new Rectangle(0, 0, Screen.width, Screen.height)
 
     this.inputPad.eventMode = 'static'
     this.getLayer(Stage.Layer.UI).attach(this.inputPad)
@@ -34,27 +28,27 @@ export abstract class Scene<C extends Components, S extends Signals>
 
   abstract build(): void
 
-  connect?(signals: Signals.Bus<S>, input: Input.Provider): Disconnectable[]
+  connect?(/* signals: Signals.Bus<S>, */ input: Input.Provider): Disconnectable[]
 
-  async init(signals: Signals.Bus<S>): Promise<void> {
-    this.signals = signals
+  async init(/* signals: Signals.Bus<S> */): Promise<void> {
+    // this.signals = signals
 
     await this.load?.()
 
-    this.initDebugIfNeeded(signals)
+    // this.initDebugIfNeeded(signals)
 
     this.build?.()
 
-    const toolkit: System.InitToolkit<S> = {
-      input: this,
-      signals,
-    }
-    this.systems.forEach((s) => s._init(this, toolkit) ?? [])
+    // const toolkit: System.InitToolkit<S> = {
+    //   input: this,
+    //   signals,
+    // }
+    // this.systems.forEach((s) => s._init(this, toolkit) ?? [])
 
-    this.connections.push(
-      ...(this.connect?.(signals, this) ?? []),
-      signals.connect('screen-resized', () => this.onResized()),
-    )
+    // this.connections.push(
+    //   ...(this.connect?.(signals, this) ?? []),
+    //   signals.connect('screen-resized', () => this.onResized()),
+    // )
     this.onResized()
   }
 
@@ -67,22 +61,22 @@ export abstract class Scene<C extends Components, S extends Signals>
 
     this.debugDisplay?.deinit()
 
-    this.systems.forEach((s) => s.deinit())
+    // this.systems.forEach((s) => s.deinit())
 
     this.connections.forEach((c) => c.disconnect())
     this.connections.length = 0
   }
 
-  fixedUpdate(signals: Signals.Bus<S>, dT: number) {
-    this.systems.forEach((s) => {
-      s.fixedUpdate?.(this, { rayCaster: this.rayCaster, signals }, dT)
-    })
+  fixedUpdate(/* signals: Signals.Bus<S>,  */ dT: number) {
+    // this.systems.forEach((s) => {
+    //   // s.fixedUpdate?.(this, { rayCaster: this.rayCaster, signals }, dT)
+    // })
   }
 
-  update(signals: Signals.Bus<S>, dT: number) {
-    this.systems.forEach((s) => {
-      s.update?.(this, { rayCaster: this.rayCaster, signals }, dT)
-    })
+  update(/* signals: Signals.Bus<S>, */ dT: number) {
+    // this.systems.forEach((s) => {
+    //   // s.update?.(this, { rayCaster: this.rayCaster, signals }, dT)
+    // })
   }
 
   connectDocumentEvent<T extends keyof DocumentEventMap>(
@@ -99,19 +93,11 @@ export abstract class Scene<C extends Components, S extends Signals>
     return Input.connectContainerEvent(type, this.inputPad, connector)
   }
 
-  createEntity<T extends Entity<C>>(type: EntityConstructor<C, T>): T {
-    const entity = super.createEntity(type)
-
-    this.signals?.emit('entity-added', { addedId: entity.id })
-
-    return entity
-  }
-
   removeEntity(id: number): boolean {
-    const tag = this.getEntityTag(id)
+    const tag = this.getTag(id)
     const isRemoved = super.removeEntity(id)
     if (isRemoved) {
-      this.signals?.emit('entity-removed', { removedId: id, tag })
+      // this.signals?.emit('entity-removed', { removedId: id, tag })
     }
 
     return isRemoved
@@ -123,23 +109,25 @@ export abstract class Scene<C extends Components, S extends Signals>
 
   // Debug ⬇️
 
-  initDebugIfNeeded(signals: Signals.Bus<S>) {
-    if (!this.options?.debug) {
-      return
-    }
-    this.debugDisplay = new Debug.Display(this.options.debug)
-    this.getLayer(Stage.Layer.DEBUG).attach(this.debugDisplay)
-    this.addChild(this.debugDisplay)
+  // initDebugIfNeeded(signals: Signals.Bus<S>) {
+  //   if (!this.options?.debug) {
+  //     return
+  //   }
+  //   this.debugDisplay = new Debug.Display(this.options.debug)
+  //   this.getLayer(Stage.Layer.DEBUG).attach(this.debugDisplay)
+  //   this.addChild(this.debugDisplay)
 
-    this.debugDisplay.init(this, signals)
-  }
+  //   this.debugDisplay.init(this, signals)
+  // }
 
-  updateDebug(fps: number) {
-    this.debugDisplay?.stats?.update(fps)
-  }
+  // updateDebug(fps: number) {
+  //   this.debugDisplay?.stats?.update(fps)
+  // }
 }
 
 export namespace Scene {
+  export type Constructor = new (renderer: Renderer) => Scene
+
   export interface Options {
     bounds: Rectangle
     debug: Debug.Options.Scene
