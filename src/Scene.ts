@@ -1,25 +1,22 @@
 import { Rectangle, Renderer, Sprite } from 'pixi.js'
-import { World, System, Screen, SignalBus, SignalMap } from '.'
+import { World, System, Screen, SignalMap, Signaler, Disconnectable } from '.'
 import { Debug } from './debug'
 import { ComponentMap } from './components'
 
-export type AnyScene = Scene<any, any>
-
 export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends World<C> {
   protected readonly systems = new Map<string, System<C, S>>()
-  protected readonly signals: SignalBus.Proxy<S>
+  protected readonly connections = Array<Disconnectable>()
 
-  private readonly signalBus = new SignalBus<S>()
   private inputPad = new Sprite()
   // private rayCaster = new RayCaster(this._colliders)
-  // private signals?: Signals.Bus<S>
   private debugDisplay?: Debug.Display
 
-  constructor(protected renderer: Renderer) {
+  constructor(
+    protected renderer: Renderer,
+    protected signaler: Signaler<S>,
+  ) {
     // protected readonly options?: Partial<Scene.Options>,
     super()
-
-    this.signals = new SignalBus.Proxy(this.signalBus)
 
     // this.boundsArea = options?.bounds ?? new Rectangle(0, 0, Screen.width, Screen.height)
 
@@ -43,7 +40,8 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
     await this.deinit?.()
 
     this.systems.forEach((s) => s.deinit?.())
-    this.signals.deinit()
+
+    this.connections.forEach((c) => c.disconnect())
 
     super.clear()
 
@@ -70,7 +68,7 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
 
   createSystem<T extends System<C, S>>(constructor: System.Constructor<C, S, T>): T {
     this.removeSystem(constructor.name)
-    const s = new constructor(this, new SignalBus.Proxy(this.signalBus))
+    const s = new constructor(this, this.signaler)
     this.systems.set(constructor.name, s)
 
     return s
@@ -108,7 +106,10 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
 }
 
 export namespace Scene {
-  export type Constructor = new (renderer: Renderer) => AnyScene
+  export type Constructor<C extends ComponentMap, S extends SignalMap> = new (
+    renderer: Renderer,
+    signaler: Signaler<S>,
+  ) => Scene<C, S>
 
   export interface Options {
     bounds: Rectangle

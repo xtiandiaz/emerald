@@ -1,50 +1,38 @@
-import { Signal, SignalMap } from '.'
+import { Signal, Signaler, SignalMap } from '.'
 import { Disconnectable } from '../types'
 
-export class SignalBus<S extends SignalMap> {
+export class SignalBus<S extends SignalMap> implements Signaler<S> {
   private readonly connectors = new Map<keyof S, Set<Signal.Connector<any>>>()
+  private _queue: [keyof S, S[keyof S]][] = []
 
   emit<K extends keyof S>(key: K, signal: S[K]): void {
     this.connectors.get(key)?.forEach((c) => c(signal))
   }
+  queue<K extends keyof S>(key: K, signal: S[K]): void {
+    this._queue.push([key, signal])
+  }
 
-  _connect<K extends keyof S>(key: K, connector: Signal.Connector<S[K]>): Disconnectable {
+  emitQueued() {
+    const queuedSignals = [...this._queue]
+    this._queue.length = 0
+
+    for (const [key, signal] of queuedSignals) {
+      this.emit(key, signal)
+    }
+  }
+
+  connect<K extends keyof S>(key: K, connector: Signal.Connector<S[K]>): Disconnectable {
     if (!this.connectors.has(key)) {
       this.connectors.set(key, new Set())
     }
     this.connectors.get(key)!.add(connector)
 
     return {
-      disconnect: () => this._disconnect(key, connector),
+      disconnect: () => this.disconnect(key, connector),
     }
   }
 
-  private _disconnect<K extends keyof S>(key: K, connector: Signal.Connector<S[K]>): void {
+  private disconnect<K extends keyof S>(key: K, connector: Signal.Connector<S[K]>): void {
     this.connectors.get(key)?.delete(connector)
-  }
-}
-
-export namespace SignalBus {
-  export class Proxy<S extends SignalMap> {
-    private readonly connections = new Map<keyof S, Disconnectable>()
-
-    constructor(private bus: SignalBus<S>) {}
-
-    deinit() {
-      this.connections.forEach((c) => c.disconnect())
-      this.connections.clear()
-    }
-
-    connect<K extends keyof S>(key: K, connector: Signal.Connector<S[K]>) {
-      this.connections.set(key, this.bus._connect(key, connector))
-    }
-    disconnect<K extends keyof S>(key: K) {
-      this.connections.get(key)?.disconnect()
-      this.connections.delete(key)
-    }
-
-    emit<K extends keyof S>(key: K, signal: S[K]): void {
-      this.bus.emit(key, signal)
-    }
   }
 }

@@ -5,6 +5,29 @@ import { Input } from '.'
 export class InputBus<Action> {
   private readonly connections = new Map<Action, Disconnectable>()
 
+  static connectContainerEvent<T extends keyof ContainerEvents<ContainerChild>>(
+    type: T,
+    target: Container,
+    connector: Input.ContainerEventConnector<T>,
+  ): Disconnectable {
+    target.on(type, connector)
+
+    return {
+      disconnect: () => target.off(type, connector),
+    }
+  }
+
+  static connectDocumentEvent<T extends keyof DocumentEventMap>(
+    type: T,
+    connector: Input.DocumentEventConnector<T>,
+  ): Disconnectable {
+    document.addEventListener(type, connector)
+
+    return {
+      disconnect: () => document.removeEventListener(type, connector),
+    }
+  }
+
   deinit() {
     this.connections.forEach((c) => c.disconnect())
   }
@@ -35,29 +58,6 @@ export class InputBus<Action> {
 
   disconnect(action: Action) {
     this.connections.get(action)?.disconnect()
-  }
-
-  static connectContainerEvent<T extends keyof ContainerEvents<ContainerChild>>(
-    type: T,
-    target: Container,
-    connector: Input.ContainerEventConnector<T>,
-  ): Disconnectable {
-    target.on(type, connector)
-
-    return {
-      disconnect: () => target.off(type, connector),
-    }
-  }
-
-  static connectDocumentEvent<T extends keyof DocumentEventMap>(
-    type: T,
-    connector: Input.DocumentEventConnector<T>,
-  ): Disconnectable {
-    document.addEventListener(type, connector)
-
-    return {
-      disconnect: () => document.removeEventListener(type, connector),
-    }
   }
 
   private resetConnection(action: Action, connection: Disconnectable) {
