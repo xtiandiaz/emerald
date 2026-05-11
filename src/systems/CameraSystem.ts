@@ -1,6 +1,6 @@
 import { Point, type Size } from 'pixi.js'
 import { Camera, type Components } from '../components'
-import { World, System, Screen, type Disconnectable } from '../core'
+import { World, System, Screen, type Disconnectable } from '..'
 import type { Signals } from '../signals'
 import { EMath } from '../extras'
 

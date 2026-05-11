@@ -1,4 +1,4 @@
-import { Entity, World, System, Vector } from '../core'
+import { Entity, World, System, Vector } from '..'
 import { CollisionSystem } from '.'
 import { type Components, Collider } from '../components'
 import type { Signals } from '../signals'

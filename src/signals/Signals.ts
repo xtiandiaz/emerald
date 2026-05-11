@@ -1,4 +1,4 @@
-import type { Disconnectable } from '../core'
+import type { Disconnectable } from '..'
 import type { Signal } from '.'
 import { Debug } from '../debug'
 

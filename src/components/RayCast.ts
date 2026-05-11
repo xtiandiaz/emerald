@@ -1,4 +1,4 @@
-import type { Component } from '../core'
+import type { Component } from '..'
 import { Collision } from '../collision'
 
 export class RayCast implements Component {

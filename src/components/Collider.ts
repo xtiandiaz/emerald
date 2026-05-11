@@ -1,5 +1,5 @@
 import { Point, Transform } from 'pixi.js'
-import { type Component } from '../core'
+import { type Component } from '..'
 import { Geometry } from '../geometry'
 import { Collision } from '../collision'
 import type { Physics } from '../physics'

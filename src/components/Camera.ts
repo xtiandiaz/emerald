@@ -1,5 +1,5 @@
 import { Point, type PointData } from 'pixi.js'
-import type { Component } from '../core'
+import type { Component } from '..'
 import { EMath } from '../extras'
 
 export class Camera implements Component, Camera.Options {

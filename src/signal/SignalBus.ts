@@ -30,6 +30,11 @@ export namespace SignalBus {
 
     constructor(private bus: SignalBus<S>) {}
 
+    deinit() {
+      this.connections.forEach((c) => c.disconnect())
+      this.connections.clear()
+    }
+
     connect<K extends keyof S>(key: K, connector: Signal.Connector<S[K]>) {
       this.connections.set(key, this.bus._connect(key, connector))
     }
@@ -40,11 +45,6 @@ export namespace SignalBus {
 
     emit<K extends keyof S>(key: K, signal: S[K]): void {
       this.bus.emit(key, signal)
-    }
-
-    stop() {
-      this.connections.forEach((c) => c.disconnect())
-      this.connections.clear()
     }
   }
 }

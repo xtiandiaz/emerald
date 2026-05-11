@@ -1,4 +1,4 @@
-import { type Disconnectable, Entity, World, System } from '../core'
+import { type Disconnectable, Entity, World, System } from '..'
 import { Collider, RayCast, type Components } from '../components'
 import type { Signals } from '../signals'
 import { Collision } from '../collision'

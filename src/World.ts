@@ -1,6 +1,6 @@
 import { Container, Point, RenderLayer } from 'pixi.js'
 import { Component, ContainerComponent, Entity } from '.'
-import { Camera, Collider, ComponentMap } from '../components'
+import { Camera, Collider, ComponentMap } from './components'
 
 export class World<C extends ComponentMap> extends Container {
   // readonly _colliders: EntityComponent<Collider>[] = []

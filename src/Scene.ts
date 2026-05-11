@@ -1,15 +1,11 @@
-import { type ContainerChild, type ContainerEvents, Rectangle, Renderer, Sprite } from 'pixi.js'
-import { World, System, Screen, SignalBus, SignalMap, Disconnectable } from '../core'
-import { Debug } from '../debug'
-import { Input } from '../input'
-import { ComponentMap } from '../components'
+import { Rectangle, Renderer, Sprite } from 'pixi.js'
+import { World, System, Screen, SignalBus, SignalMap } from '.'
+import { Debug } from './debug'
+import { ComponentMap } from './components'
 
 export type AnyScene = Scene<any, any>
 
-export abstract class Scene<C extends ComponentMap, S extends SignalMap>
-  extends World<C>
-  implements Input.Provider
-{
+export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends World<C> {
   protected readonly systems = new Map<string, System<C, S>>()
   protected readonly signals: SignalBus.Proxy<S>
 
@@ -27,7 +23,6 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap>
 
     // this.boundsArea = options?.bounds ?? new Rectangle(0, 0, Screen.width, Screen.height)
 
-    this.inputPad.eventMode = 'static'
     // this.getLayer(Stage.Layer.UI).attach(this.inputPad)
     this.addChild(this.inputPad)
   }
@@ -48,7 +43,7 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap>
     await this.deinit?.()
 
     this.systems.forEach((s) => s.deinit?.())
-    this.signals.stop()
+    this.signals.deinit()
 
     super.clear()
 
@@ -71,20 +66,6 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap>
     })
   }
 
-  connectDocumentEvent<T extends keyof DocumentEventMap>(
-    type: T,
-    connector: Input.DocumentEventConnector<T>,
-  ): Disconnectable {
-    return Input.connectDocumentEvent(type, connector)
-  }
-
-  connectContainerEvent<T extends keyof ContainerEvents<ContainerChild>>(
-    type: T,
-    connector: Input.ContainerEventConnector<T>,
-  ): Disconnectable {
-    return Input.connectContainerEvent(type, this.inputPad, connector)
-  }
-
   /* SYSTEMS */
 
   createSystem<T extends System<C, S>>(constructor: System.Constructor<C, S, T>): T {
@@ -99,6 +80,8 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap>
     this.systems.get(key)?.deinit?.()
     return this.systems.delete(key)
   }
+
+  /* INPUT */
 
   /* Private */
 

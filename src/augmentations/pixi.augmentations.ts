@@ -1,5 +1,5 @@
 import { ObservablePoint, Point, type PointData } from 'pixi.js'
-import { Vector, type VectorData } from '../core'
+import { Vector, type VectorData } from '..'
 import { EMath } from '../extras'
 
 declare global {

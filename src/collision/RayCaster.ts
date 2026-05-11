@@ -1,4 +1,4 @@
-import type { EntityComponent } from '../core'
+import type { EntityComponent } from '..'
 import { Collision } from './Collision'
 import { Collider } from '../components'
 

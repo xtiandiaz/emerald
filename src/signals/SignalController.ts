@@ -1,4 +1,4 @@
-import type { Disconnectable } from '../core'
+import type { Disconnectable } from '..'
 import type { Signals } from '.'
 
 export class SignalController<SI extends Signals> implements Signals.Bus<SI> {

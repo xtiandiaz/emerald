@@ -1,4 +1,4 @@
-import { Vector } from '../core'
+import { Vector } from '..'
 
 export namespace Physics {
   export const NEARLY_ZERO_MAGNITUDE = 0.001 // 1 mm

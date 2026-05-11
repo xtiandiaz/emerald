@@ -1,4 +1,4 @@
-import type { Component } from '../core'
+import type { Component } from '..'
 import type { Camera } from './Camera'
 import type { Collider } from './Collider'
 import type { RayCast } from './RayCast'

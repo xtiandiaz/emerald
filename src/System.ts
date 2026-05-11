@@ -1,5 +1,5 @@
 import type { World, SignalMap, SignalBus } from './'
-import { ComponentMap } from '../components'
+import { ComponentMap } from './components'
 
 export abstract class System<C extends ComponentMap, S extends SignalMap> {
   constructor(
@@ -13,7 +13,7 @@ export abstract class System<C extends ComponentMap, S extends SignalMap> {
   _deinit(): void {
     this.deinit?.()
 
-    this.signals.stop()
+    this.signals.deinit()
   }
 
   fixedUpdate?(dT: number): void

@@ -1,6 +1,6 @@
 import { Application, Ticker, type ApplicationOptions } from 'pixi.js'
-import { Scene, Screen, AnyScene } from '../core'
-import { EMath } from '../extras'
+import { Scene, Screen, AnyScene } from '.'
+import { EMath } from './extras'
 //
 import * as PIXI from 'pixi.js'
 import gsap from 'gsap'

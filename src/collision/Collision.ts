@@ -1,5 +1,5 @@
 import { Matrix, Point, Transform, type PointData } from 'pixi.js'
-import { Vector, Range, type VectorData } from '../core'
+import { Vector, Range, type VectorData } from '..'
 import { Geometry } from '../geometry'
 import { EMath } from '../extras'
 
