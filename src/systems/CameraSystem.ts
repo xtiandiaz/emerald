@@ -1,6 +1,6 @@
 import { Point, type Size } from 'pixi.js'
 import { Camera, type Components } from '../components'
-import { Stage, System, Screen, type Disconnectable } from '../core'
+import { World, System, Screen, type Disconnectable } from '../core'
 import type { Signals } from '../signals'
 import { EMath } from '../extras'
 
@@ -9,7 +9,7 @@ export class CameraSystem<C extends Components, S extends Signals> extends Syste
   private referencePosition = new Point()
   private zoom = 1
 
-  init(stage: Stage<C>, toolkit: System.InitToolkit<S>): Disconnectable[] {
+  init(stage: World<C>, toolkit: System.InitToolkit<S>): Disconnectable[] {
     if (stage.currentCamera) {
       const { entityId, component: camera } = stage.currentCamera
 
@@ -23,7 +23,7 @@ export class CameraSystem<C extends Components, S extends Signals> extends Syste
     return []
   }
 
-  update(stage: Stage<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
+  update(stage: World<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
     if (!stage.currentCamera) {
       return
     }

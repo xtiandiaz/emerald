@@ -1,4 +1,4 @@
-import { Entity, Stage, System, Vector } from '../core'
+import { Entity, World, System, Vector } from '../core'
 import { CollisionSystem } from '.'
 import { type Components, Collider } from '../components'
 import type { Signals } from '../signals'
@@ -38,14 +38,14 @@ export class PhysicsSystem<C extends Components, S extends Signals> extends Coll
     entity.setFromMatrix(body._transform.matrix)
   }
 
-  fixedUpdate(stage: Stage<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
+  fixedUpdate(stage: World<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
     dT /= this.iterations
     for (let it = 0; it < this.iterations; it++) {
       super.fixedUpdate(stage, toolkit, dT)
     }
   }
 
-  resolveCollision(collision: CollisionSystem.Instance, stage: Stage<C>): void {
+  resolveCollision(collision: CollisionSystem.Instance, stage: World<C>): void {
     const bodyA = stage.getComponent('rigid-body', collision.idA)
     const bodyB = stage.getComponent('rigid-body', collision.idB)
     if (bodyA && bodyB) {
@@ -53,7 +53,7 @@ export class PhysicsSystem<C extends Components, S extends Signals> extends Coll
     }
   }
 
-  protected initDebugIfNeeded(stage: Stage<C>, signals: Signals.Bus<S>): void {
+  protected initDebugIfNeeded(stage: World<C>, signals: Signals.Bus<S>): void {
     super.initDebugIfNeeded(stage, signals)
 
     signals.emit('debug-physics-enabled', { iterations: this.iterations })

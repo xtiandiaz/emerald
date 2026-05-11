@@ -1,20 +1,15 @@
 import { Container, Point, RenderLayer } from 'pixi.js'
-import { Component, Entity } from './'
-import { Camera, Collider } from '../components'
+import { Component, ContainerComponent, Entity } from '.'
+import { Camera, Collider, ComponentMap } from '../components'
 
-export class Stage extends Container {
+export class World<C extends ComponentMap> extends Container {
   // readonly _colliders: EntityComponent<Collider>[] = []
-
   private nextEntityId = 1
   private entities = new Map<number, Entity>()
   private tags = new Map<string, Set<number>>()
-  // private id2TagMap = new Map<number, string>()
-  // private tag2IdsMap = new Map<string, number[]>()
-  // private id2EntityMap = new Map<number, Entity<C>>()
-  // private type2IdsMap = new Map<string, number[]>()
-  // private id2ComponentsMap = new Map<number, Map<keyof C, C[keyof C]>>()
+
   private renderLayers = new Map(
-    [Stage.Layer.ENTITIES, Stage.Layer.UI, Stage.Layer.DEBUG].map((key) => [
+    [World.Layer.ENTITIES, World.Layer.UI, World.Layer.DEBUG].map((key) => [
       key,
       new RenderLayer(),
     ]),
@@ -37,17 +32,16 @@ export class Stage extends Container {
   //   return undefined
   // }
 
-  deinit() {
-    // this._colliders.length = 0
-    // this.id2EntityMap.clear()
-    // this.type2IdsMap.clear()
-    // this.id2ComponentsMap.clear()
-
-    this.destroy({ children: true, texture: true, textureSource: true })
+  getLayer(key: World.Layer): RenderLayer {
+    return this.renderLayers.get(key)!
   }
 
-  getLayer(key: Stage.Layer): RenderLayer {
-    return this.renderLayers.get(key)!
+  setCurrentCamera(entityId: number) {
+    // if (this.id2ComponentsMap.has(entityId) && this.id2ComponentsMap.get(entityId)!.has('camera')) {
+    //   this.currentCameraEntityId = entityId
+    // } else {
+    //   console.warn(`Undefined Camera for entity-id ${entityId}`)
+    // }
   }
 
   createEntity(tag?: string): number {
@@ -69,6 +63,30 @@ export class Stage extends Container {
     return id
   }
 
+  hasEntity(id: number): boolean {
+    return this.entities.has(id)
+  }
+
+  removeEntity(id: number): boolean {
+    const e = this.entities.get(id)
+    if (!e) {
+      return false
+    }
+    for (const [, c] of e.components) {
+      if (c instanceof Container) {
+        this.removeChild(c)
+      }
+    }
+    if (e.tag) {
+      this.tags.get(e.tag)?.delete(e.id)
+    }
+
+    // this.deleteColliderEntry(id)
+
+    return this.entities.delete(id)
+    // this.signals?.emit('entity-removed', { removedId: id, tag })
+  }
+
   tag(entityId: number, tag: string) {
     const e = this.entities.get(entityId)
     if (!e) {
@@ -84,13 +102,9 @@ export class Stage extends Container {
     this.tags.get(tag)!.add(e.id)
   }
 
-  hasEntity(id: number): boolean {
-    return this.entities.has(id)
-  }
-
-  hasEntityByTag(tag: string): boolean {
-    return (this.tags.get(tag)?.size ?? 0) > 0
-  }
+  // hasEntityByTag(tag: string): boolean {
+  //   return (this.tags.get(tag)?.size ?? 0) > 0
+  // }
 
   getTag(entityId: number): string | undefined {
     return this.entities.values().find((e) => e.id === entityId)?.tag
@@ -100,7 +114,7 @@ export class Stage extends Container {
     return [...(this.tags.get(tag) ?? [])]
   }
 
-  addComponent(entityId: number, ...components: Component[]) {
+  addComponent(entityId: number, ...components: (Component | ContainerComponent)[]) {
     const e = this.entities.get(entityId)
     if (!e) {
       console.error('Undefined entity', entityId)
@@ -111,8 +125,6 @@ export class Stage extends Container {
 
       if (c instanceof Container) {
         this.addChild(c)
-      } else if (c.container) {
-        this.addChild(c.container)
       }
     }
   }
@@ -134,8 +146,6 @@ export class Stage extends Container {
     const c = e.components.get(key)
     if (c instanceof Container) {
       this.removeChild(c)
-    } else if (c?.container) {
-      this.removeChild(c.container)
     }
 
     // const c = e.components.get(key)
@@ -146,31 +156,9 @@ export class Stage extends Container {
     return e.components.delete(key)
   }
 
-  removeEntity(id: number): boolean {
-    const e = this.entities.get(id)
-    if (!e) {
-      return false
-    }
-    for (const [, c] of e.components) {
-      if (c instanceof Container) {
-        this.removeChild(c)
-      }
-    }
-    if (e.tag) {
-      this.tags.get(e.tag)?.delete(e.id)
-    }
-
-    // this.deleteColliderEntry(id)
-
-    return this.entities.delete(id)
-  }
-
-  setCurrentCamera(entityId: number) {
-    // if (this.id2ComponentsMap.has(entityId) && this.id2ComponentsMap.get(entityId)!.has('camera')) {
-    //   this.currentCameraEntityId = entityId
-    // } else {
-    //   console.warn(`Undefined Camera for entity-id ${entityId}`)
-    // }
+  clear() {
+    this.entities.clear()
+    this.tags.clear()
   }
 
   // private resetColliderEntry(instance: Collider, entityId: number) {
@@ -199,7 +187,7 @@ export class Stage extends Container {
   // }
 }
 
-export namespace Stage {
+export namespace World {
   export enum Layer {
     ENTITIES = 'entities',
     UI = 'ui',

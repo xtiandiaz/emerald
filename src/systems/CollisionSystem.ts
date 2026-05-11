@@ -1,4 +1,4 @@
-import { type Disconnectable, Entity, Stage, System } from '../core'
+import { type Disconnectable, Entity, World, System } from '../core'
 import { Collider, RayCast, type Components } from '../components'
 import type { Signals } from '../signals'
 import { Collision } from '../collision'
@@ -12,7 +12,7 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
     super()
   }
 
-  init(stage: Stage<C>, toolkit: System.InitToolkit<S>): Disconnectable[] {
+  init(stage: World<C>, toolkit: System.InitToolkit<S>): Disconnectable[] {
     this.initDebugIfNeeded(stage, toolkit.signals)
 
     return []
@@ -22,7 +22,7 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
     collider._transform.setFromMatrix(entity.getGlobalTransform())
   }
 
-  fixedUpdate(stage: Stage<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
+  fixedUpdate(stage: World<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
     const colliders = stage._colliders
 
     let rcA: RayCast | undefined, rcB: RayCast | undefined
@@ -84,9 +84,9 @@ export class CollisionSystem<C extends Components, S extends Signals> extends Sy
     }
   }
 
-  resolveCollision?(collision: CollisionSystem.Instance, stage: Stage<C>): void
+  resolveCollision?(collision: CollisionSystem.Instance, stage: World<C>): void
 
-  protected initDebugIfNeeded(stage: Stage<C>, signals: Signals.Bus<S>) {
+  protected initDebugIfNeeded(stage: World<C>, signals: Signals.Bus<S>) {
     if (!this.options.debug?.rendersColliders) {
       return
     }

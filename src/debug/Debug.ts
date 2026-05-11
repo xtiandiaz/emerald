@@ -1,5 +1,5 @@
 import { Container, Text, Ticker, Graphics as PixiGraphics } from 'pixi.js'
-import type { Disconnectable, Stage } from '../core'
+import type { Disconnectable, World } from '../core'
 import type { Components, Collider } from '../components'
 import type { Signals } from '../signals'
 import { Collision } from '../collision'
@@ -30,7 +30,7 @@ export namespace Debug {
       super()
     }
 
-    init<Cs extends Components, Ss extends Signals>(stage: Stage<Cs>, signals: Signals.Bus<Ss>) {
+    init<Cs extends Components, Ss extends Signals>(stage: World<Cs>, signals: Signals.Bus<Ss>) {
       if (this.options.showsStats) {
         this.stats = new StatsDisplay()
         this.addChild(this.stats)
@@ -74,7 +74,7 @@ export namespace Debug {
       this.addChild(this.text)
     }
 
-    init<Cs extends Components, Ss extends Signals>(stage: Stage<Cs>, signalBus: Signals.Bus<Ss>) {
+    init<Cs extends Components, Ss extends Signals>(stage: World<Cs>, signalBus: Signals.Bus<Ss>) {
       this.connections.push(
         signalBus.connect('debug-physics-enabled', (s) => {
           this.stats.physicsIterations = s.iterations

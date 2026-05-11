@@ -6,13 +6,14 @@ export type _Signals = {
   [key: string]: Signal
 }
 
-export interface Signals extends _Signals {
+export interface Signals /* extends _Signals */ {
   'entity-added': Signal.EntityAdded
   'entity-removed': Signal.EntityRemoved
   'screen-resized': Signal.ScreenResized
   action: Signal.Action
   // Debug
   'debug-physics-enabled': Debug.Signal.PhysicsEnabled
+  [key: string]: Signal
 }
 
 export namespace Signals {

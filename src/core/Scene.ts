@@ -1,82 +1,74 @@
 import { type ContainerChild, type ContainerEvents, Rectangle, Renderer, Sprite } from 'pixi.js'
-import { Entity, Stage, System, Screen, type Disconnectable } from '../core'
-import type { Signals } from '../signals'
+import { World, System, Screen, SignalBus, SignalMap, Disconnectable } from '../core'
 import { Debug } from '../debug'
 import { Input } from '../input'
+import { ComponentMap } from '../components'
 
-export abstract class Scene extends Stage implements Input.Provider {
-  protected connections: Disconnectable[] = []
+export type AnyScene = Scene<any, any>
 
+export abstract class Scene<C extends ComponentMap, S extends SignalMap>
+  extends World<C>
+  implements Input.Provider
+{
+  protected readonly systems = new Map<string, System<C, S>>()
+  protected readonly signals: SignalBus.Proxy<S>
+
+  private readonly signalBus = new SignalBus<S>()
   private inputPad = new Sprite()
   // private rayCaster = new RayCaster(this._colliders)
   // private signals?: Signals.Bus<S>
   private debugDisplay?: Debug.Display
 
-  constructor() {
-    // protected readonly systems: System<C, S>[],
+  constructor(protected renderer: Renderer) {
     // protected readonly options?: Partial<Scene.Options>,
     super()
+
+    this.signals = new SignalBus.Proxy(this.signalBus)
 
     // this.boundsArea = options?.bounds ?? new Rectangle(0, 0, Screen.width, Screen.height)
 
     this.inputPad.eventMode = 'static'
-    this.getLayer(Stage.Layer.UI).attach(this.inputPad)
+    // this.getLayer(Stage.Layer.UI).attach(this.inputPad)
     this.addChild(this.inputPad)
   }
 
-  async load?(): Promise<void>
-
-  abstract build(): void
-
-  connect?(/* signals: Signals.Bus<S>, */ input: Input.Provider): Disconnectable[]
-
-  async init(/* signals: Signals.Bus<S> */): Promise<void> {
-    // this.signals = signals
-
-    await this.load?.()
+  async init?(): Promise<void>
+  async _init(): Promise<void> {
+    await this.init?.()
 
     // this.initDebugIfNeeded(signals)
 
-    this.build?.()
+    this.systems.forEach((s) => s.init() ?? [])
 
-    // const toolkit: System.InitToolkit<S> = {
-    //   input: this,
-    //   signals,
-    // }
-    // this.systems.forEach((s) => s._init(this, toolkit) ?? [])
-
-    // this.connections.push(
-    //   ...(this.connect?.(signals, this) ?? []),
-    //   signals.connect('screen-resized', () => this.onResized()),
-    // )
     this.onResized()
   }
 
-  async unload?(): Promise<void>
+  async deinit?(): Promise<void>
+  async _deinit() {
+    await this.deinit?.()
 
-  async deinit(): Promise<void> {
-    super.deinit()
+    this.systems.forEach((s) => s.deinit?.())
+    this.signals.stop()
 
-    await this.unload?.()
+    super.clear()
 
-    this.debugDisplay?.deinit()
+    // this.debugDisplay?.deinit()
 
-    // this.systems.forEach((s) => s.deinit())
-
-    this.connections.forEach((c) => c.disconnect())
-    this.connections.length = 0
+    this.destroy({ children: true, texture: true, textureSource: true })
   }
 
-  fixedUpdate(/* signals: Signals.Bus<S>,  */ dT: number) {
-    // this.systems.forEach((s) => {
-    //   // s.fixedUpdate?.(this, { rayCaster: this.rayCaster, signals }, dT)
-    // })
+  fixedUpdate?(dT: number): void
+  _fixedUpdate(/* signals: Signals.Bus<S>, */ dT: number) {
+    this.systems.forEach((s) => {
+      s.fixedUpdate?.(dT)
+    })
   }
 
-  update(/* signals: Signals.Bus<S>, */ dT: number) {
-    // this.systems.forEach((s) => {
-    //   // s.update?.(this, { rayCaster: this.rayCaster, signals }, dT)
-    // })
+  update?(dT: number): void
+  _update(/* signals: Signals.Bus<S>, */ dT: number) {
+    this.systems.forEach((s) => {
+      s.update?.(dT)
+    })
   }
 
   connectDocumentEvent<T extends keyof DocumentEventMap>(
@@ -93,15 +85,22 @@ export abstract class Scene extends Stage implements Input.Provider {
     return Input.connectContainerEvent(type, this.inputPad, connector)
   }
 
-  removeEntity(id: number): boolean {
-    const tag = this.getTag(id)
-    const isRemoved = super.removeEntity(id)
-    if (isRemoved) {
-      // this.signals?.emit('entity-removed', { removedId: id, tag })
-    }
+  /* SYSTEMS */
 
-    return isRemoved
+  createSystem<T extends System<C, S>>(constructor: System.Constructor<C, S, T>): T {
+    this.removeSystem(constructor.name)
+    const s = new constructor(this, new SignalBus.Proxy(this.signalBus))
+    this.systems.set(constructor.name, s)
+
+    return s
   }
+
+  removeSystem(key: string): boolean {
+    this.systems.get(key)?.deinit?.()
+    return this.systems.delete(key)
+  }
+
+  /* Private */
 
   private onResized() {
     this.inputPad.setSize(Screen.width, Screen.height)
@@ -126,7 +125,7 @@ export abstract class Scene extends Stage implements Input.Provider {
 }
 
 export namespace Scene {
-  export type Constructor = new (renderer: Renderer) => Scene
+  export type Constructor = new (renderer: Renderer) => AnyScene
 
   export interface Options {
     bounds: Rectangle
