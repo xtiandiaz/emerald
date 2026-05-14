@@ -1,6 +1,6 @@
 import type { EntityComponent } from '..'
 import { Collision } from './Collision'
-import { Collider } from '../components'
+import { Collider } from '../component'
 
 export class RayCaster {
   constructor(private colliders: EntityComponent<Collider>[]) {}

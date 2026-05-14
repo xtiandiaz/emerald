@@ -1,5 +1,5 @@
 import { type Disconnectable, Entity, World, System } from '..'
-import { Collider, RayCast, type Components } from '../components'
+import { Collider, RayCast, type Components } from '../component'
 import type { Signals } from '../signals'
 import { Collision } from '../collision'
 import { Debug } from '../debug'

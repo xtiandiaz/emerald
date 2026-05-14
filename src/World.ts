@@ -1,11 +1,11 @@
-import { Container, Point, RenderLayer } from 'pixi.js'
-import { Component, ContainerComponent, Entity } from '.'
-import { Camera, Collider, ComponentMap } from './components'
+import { Container, RenderLayer } from 'pixi.js'
+import { Component, Entity } from '.'
 
-export class World<C extends ComponentMap> extends Container {
+export class World extends Container {
   // readonly _colliders: EntityComponent<Collider>[] = []
+  protected _entities = new Map<number, Entity>()
+
   private nextEntityId = 1
-  private entities = new Map<number, Entity>()
   private tags = new Map<string, Set<number>>()
 
   private renderLayers = new Map(
@@ -47,7 +47,7 @@ export class World<C extends ComponentMap> extends Container {
   createEntity(tag?: string): number {
     const id = this.nextEntityId++
 
-    this.entities.set(id, {
+    this._entities.set(id, {
       id,
       tag,
       components: new Map<string, Component>(),
@@ -64,11 +64,11 @@ export class World<C extends ComponentMap> extends Container {
   }
 
   hasEntity(id: number): boolean {
-    return this.entities.has(id)
+    return this._entities.has(id)
   }
 
   removeEntity(id: number): boolean {
-    const e = this.entities.get(id)
+    const e = this._entities.get(id)
     if (!e) {
       return false
     }
@@ -83,12 +83,12 @@ export class World<C extends ComponentMap> extends Container {
 
     // this.deleteColliderEntry(id)
 
-    return this.entities.delete(id)
+    return this._entities.delete(id)
     // this.signals?.emit('entity-removed', { removedId: id, tag })
   }
 
   tag(entityId: number, tag: string) {
-    const e = this.entities.get(entityId)
+    const e = this._entities.get(entityId)
     if (!e) {
       return
     }
@@ -102,43 +102,41 @@ export class World<C extends ComponentMap> extends Container {
     this.tags.get(tag)!.add(e.id)
   }
 
-  // hasEntityByTag(tag: string): boolean {
-  //   return (this.tags.get(tag)?.size ?? 0) > 0
-  // }
-
   getTag(entityId: number): string | undefined {
-    return this.entities.values().find((e) => e.id === entityId)?.tag
+    return this._entities.values().find((e) => e.id === entityId)?.tag
   }
 
   getTaggedEntities(tag: string): number[] {
     return [...(this.tags.get(tag) ?? [])]
   }
 
-  addComponent(entityId: number, ...components: (Component | ContainerComponent)[]) {
-    const e = this.entities.get(entityId)
+  addComponent<T extends Component>(component: T, entityId: number) {
+    const e = this._entities.get(entityId)
     if (!e) {
       console.error('Undefined entity', entityId)
       return
     }
-    for (const c of components) {
-      e.components.set(c.key, c)
+    e.components.set(component.constructor.name, component)
 
-      if (c instanceof Container) {
-        this.addChild(c)
-      }
+    if (component instanceof Container) {
+      this.addChild(component)
     }
+    return component
   }
 
-  hasComponent(key: string, entityId: number): boolean {
-    return this.entities.get(entityId)?.components.has(key) ?? false
+  hasComponent<T extends Component>(type: T, entityId: number): boolean {
+    return this._entities.get(entityId)?.components.has(type.constructor.name) ?? false
   }
 
-  getComponent<T extends Component>(key: string, entityId: number): T | undefined {
-    return this.entities.get(entityId)?.components.get(key) as T
+  getComponent<T extends Component>(
+    typeValue: Component.Constructor<T>,
+    entityId: number,
+  ): T | undefined {
+    return this._entities.get(entityId)?.components.get(typeValue.name) as T
   }
 
   removeComponent(key: string, entityId: number): boolean {
-    const e = this.entities.get(entityId)
+    const e = this._entities.get(entityId)
     if (!e) {
       console.error('Undefined entity', entityId)
       return false
@@ -157,7 +155,7 @@ export class World<C extends ComponentMap> extends Container {
   }
 
   clear() {
-    this.entities.clear()
+    this._entities.clear()
     this.tags.clear()
   }
 

@@ -1,6 +1,6 @@
 import { Entity, World, System, Vector } from '..'
 import { CollisionSystem } from '.'
-import { type Components, Collider } from '../components'
+import { type Components, Collider } from '../component'
 import type { Signals } from '../signals'
 import { Collision } from '../collision'
 import { Physics, PhysicsEngine } from '../physics'

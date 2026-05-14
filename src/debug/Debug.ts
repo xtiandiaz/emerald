@@ -1,6 +1,6 @@
 import { Container, Text, Ticker, Graphics as PixiGraphics } from 'pixi.js'
 import type { Disconnectable, World } from '..'
-import type { Components, Collider } from '../components'
+import type { Components, Collider } from '../component'
 import type { Signals } from '../signals'
 import { Collision } from '../collision'
 

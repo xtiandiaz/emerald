@@ -32,8 +32,8 @@ export class InputBus<Action> {
     this.connections.forEach((c) => c.disconnect())
   }
 
-  connectContainer<K extends keyof ContainerEvents<ContainerChild>>(
-    container: Container,
+  connectContainer<T extends Container, K extends keyof ContainerEvents<ContainerChild>>(
+    container: T,
     options: {
       event: K
       mode: EventMode

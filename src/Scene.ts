@@ -1,10 +1,10 @@
-import { Rectangle, Renderer, Sprite } from 'pixi.js'
-import { World, System, Screen, SignalMap, Signaler, Disconnectable } from '.'
+import { Container, Rectangle, Renderer, Sprite, Transform } from 'pixi.js'
+import { World, System, Screen, SignalMap, Signaler, Disconnectable, Collider } from '.'
 import { Debug } from './debug'
-import { ComponentMap } from './components'
+import { Shape } from './component/collider/shapes'
 
-export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends World<C> {
-  protected readonly systems = new Map<string, System<C, S>>()
+export abstract class Scene<S extends SignalMap> extends World {
+  protected readonly systems = new Map<string, System<S>>()
   protected readonly connections = Array<Disconnectable>()
 
   private inputPad = new Sprite()
@@ -22,6 +22,8 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
 
     // this.getLayer(Stage.Layer.UI).attach(this.inputPad)
     this.addChild(this.inputPad)
+
+    this.renderer.addListener('resize', this.onResized)
   }
 
   async init?(): Promise<void>
@@ -31,8 +33,6 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
     // this.initDebugIfNeeded(signals)
 
     this.systems.forEach((s) => s.init() ?? [])
-
-    this.onResized()
   }
 
   async deinit?(): Promise<void>
@@ -47,18 +47,31 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
 
     // this.debugDisplay?.deinit()
 
+    this.renderer.removeListener('resize', this.onResized)
     this.destroy({ children: true, texture: true, textureSource: true })
   }
 
   fixedUpdate?(dT: number): void
-  _fixedUpdate(/* signals: Signals.Bus<S>, */ dT: number) {
+  _fixedUpdate(dT: number) {
     this.systems.forEach((s) => {
       s.fixedUpdate?.(dT)
     })
   }
 
   update?(dT: number): void
-  _update(/* signals: Signals.Bus<S>, */ dT: number) {
+  _update(dT: number) {
+    for (const e of this._entities.values()) {
+      const t = e.components.get(Transform.name) as Transform
+      if (!t) continue
+      for (const c of e.components.values()) {
+        if (c instanceof Container) {
+          c.position.set(t.position.x, t.position.y)
+        } else if (c instanceof Collider) {
+          c._transform.position.set(t.position.x, t.position.y)
+        }
+      }
+    }
+
     this.systems.forEach((s) => {
       s.update?.(dT)
     })
@@ -66,9 +79,9 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
 
   /* SYSTEMS */
 
-  createSystem<T extends System<C, S>>(constructor: System.Constructor<C, S, T>): T {
+  createSystem<T extends System<S>>(constructor: System.Constructor<S, T>): T {
     this.removeSystem(constructor.name)
-    const s = new constructor(this, this.signaler)
+    const s = new constructor(this, this.renderer.screen, this.signaler)
     this.systems.set(constructor.name, s)
 
     return s
@@ -78,8 +91,6 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
     this.systems.get(key)?.deinit?.()
     return this.systems.delete(key)
   }
-
-  /* INPUT */
 
   /* Private */
 
@@ -106,10 +117,10 @@ export abstract class Scene<C extends ComponentMap, S extends SignalMap> extends
 }
 
 export namespace Scene {
-  export type Constructor<C extends ComponentMap, S extends SignalMap> = new (
+  export type Constructor<S extends SignalMap> = new (
     renderer: Renderer,
     signaler: Signaler<S>,
-  ) => Scene<C, S>
+  ) => Scene<S>
 
   export interface Options {
     bounds: Rectangle

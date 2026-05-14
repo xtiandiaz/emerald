@@ -11,7 +11,7 @@ export class Game<S extends SignalMap> extends Application {
 
   protected readonly signalBus = new SignalBus<S>()
   protected readonly connections = Array<Disconnectable>()
-  protected scene?: Scene<any, S>
+  protected scene?: Scene<S>
 
   private fixedTime = {
     step: 1 / 60,
@@ -45,7 +45,7 @@ export class Game<S extends SignalMap> extends Application {
     this.ticker.remove(this.update, this)
   }
 
-  async createScene(constructor: Scene.Constructor<any, S>) {
+  async createScene(constructor: Scene.Constructor<S>) {
     // TODO Add optional transition sequence
 
     if (this.scene) {

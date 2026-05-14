@@ -1,8 +1,9 @@
 export * from './types'
 
-export * from './System'
-
+export * from './component'
+export * from './Entity'
 export * from './World'
+export * from './System'
 export * from './Scene'
 
 export * from './signal'

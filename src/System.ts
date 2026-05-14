@@ -1,11 +1,12 @@
-import { type World, type SignalMap, type Signaler, Disconnectable } from './'
-import { ComponentMap } from './components'
+import { Rectangle } from 'pixi.js'
+import { type World, type Component, type SignalMap, type Signaler, Disconnectable } from './'
 
-export abstract class System<C extends ComponentMap, S extends SignalMap> {
+export abstract class System<S extends SignalMap> {
   protected readonly connections = Array<Disconnectable>()
 
   constructor(
-    protected world: World<C>,
+    protected world: World,
+    protected screen: Rectangle,
     protected signaler: Signaler<S>,
   ) {}
 
@@ -20,12 +21,36 @@ export abstract class System<C extends ComponentMap, S extends SignalMap> {
 
   fixedUpdate?(dT: number): void
   update?(dT: number): void
+
+  createEntity(tag?: string) {
+    return this.world.createEntity(tag)
+  }
+
+  addComponents<C1 extends Component, C2 extends Component, C3 extends Component>(
+    entityId: number,
+    c1: C1,
+    c2?: C2,
+    c3?: C3,
+  ) {
+    if (!this.world.hasEntity(entityId)) return
+
+    this.world.addComponent(c1, entityId)
+    if (c2) this.world.addComponent(c2, entityId)
+    if (c3) this.world.addComponent(c3, entityId)
+  }
+
+  getComponent<T extends Component>(
+    typeValue: Component.Constructor<T>,
+    entityId: number,
+  ): T | undefined {
+    return this.world.getComponent(typeValue, entityId)
+  }
 }
 
 export namespace System {
-  export type Constructor<
-    C extends ComponentMap,
-    S extends SignalMap,
-    T extends System<C, S>,
-  > = new (world: World<C>, signaler: Signaler<S>) => T
+  export type Constructor<S extends SignalMap, T extends System<S>> = new (
+    world: World,
+    screen: Rectangle,
+    signaler: Signaler<S>,
+  ) => T
 }
