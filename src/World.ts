@@ -2,7 +2,6 @@ import { Container, RenderLayer } from 'pixi.js'
 import { Component, Entity } from '.'
 
 export class World extends Container {
-  // readonly _colliders: EntityComponent<Collider>[] = []
   protected _entities = new Map<number, Entity>()
 
   private nextEntityId = 1
@@ -81,8 +80,6 @@ export class World extends Container {
       this.tags.get(e.tag)?.delete(e.id)
     }
 
-    // this.deleteColliderEntry(id)
-
     return this._entities.delete(id)
     // this.signals?.emit('entity-removed', { removedId: id, tag })
   }
@@ -146,11 +143,6 @@ export class World extends Container {
       this.removeChild(c)
     }
 
-    // const c = e.components.get(key)
-    // if (c instanceof Collider) {
-    //   this.deleteColliderEntry(entityId)
-    // }
-
     return e.components.delete(key)
   }
 
@@ -158,18 +150,6 @@ export class World extends Container {
     this._entities.clear()
     this.tags.clear()
   }
-
-  // private resetColliderEntry(instance: Collider, entityId: number) {
-  //   this.deleteColliderEntry(entityId)
-  //   this._colliders.push({ entityId, component: instance })
-  // }
-
-  // private deleteColliderEntry(entityId: number) {
-  //   const colliderIndex = this._colliders.findIndex(({ entityId: id }) => id == entityId)
-  //   if (colliderIndex >= 0) {
-  //     this._colliders.splice(colliderIndex, 1)
-  //   }
-  // }
 
   // private onComponentAdded<K extends keyof C>(_: K, component: C[K], entity: Entity<C>) {
   // if (component instanceof Collider) {

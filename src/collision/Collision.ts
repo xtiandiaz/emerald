@@ -1,10 +1,19 @@
 import { Matrix, Point, Transform, type PointData } from 'pixi.js'
 import { Vector, Range, type VectorData } from '..'
-import { Geometry } from '../geometry'
+import { Geometry, ProjectionOverlap } from '../geometry'
 import { EMath } from '../extras'
+
+export interface Collision extends ProjectionOverlap {
+  points?: Collision.ContactPoint[]
+}
 
 export namespace Collision {
   export type LayerMap = Map<number, number>
+
+  export interface ContactPoint {
+    point: Point
+    depth: number
+  }
 
   export interface Instance extends Shape.Contact {
     colliderId: number

@@ -1,7 +1,7 @@
 import { Container, Rectangle, Renderer, Sprite, Transform } from 'pixi.js'
 import { World, System, Screen, SignalMap, Signaler, Disconnectable, Collider } from '.'
 import { Debug } from './debug'
-import { Shape } from './component/collider/shapes'
+import { Shape } from './geometry/shapes'
 
 export abstract class Scene<S extends SignalMap> extends World {
   protected readonly systems = new Map<string, System<S>>()
@@ -63,6 +63,7 @@ export abstract class Scene<S extends SignalMap> extends World {
     for (const e of this._entities.values()) {
       const t = e.components.get(Transform.name) as Transform
       if (!t) continue
+
       for (const c of e.components.values()) {
         if (c instanceof Container) {
           c.position.set(t.position.x, t.position.y)

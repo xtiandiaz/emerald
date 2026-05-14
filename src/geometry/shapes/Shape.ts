@@ -1,5 +1,6 @@
-import { Transform } from 'pixi.js'
-import { BoundingBox, isAABB } from '../../../geometry'
+import { Point, Transform } from 'pixi.js'
+import { BoundingBox, isAABB, ProjectionRange } from '..'
+import { VectorData } from '../..'
 
 export abstract class Shape {
   readonly _transform = new Transform({
@@ -10,12 +11,16 @@ export abstract class Shape {
 
   constructor() {}
 
+  abstract get center(): Point
+
   hasAABB(other: Shape): boolean {
     this.updateVerticesIfNeeded()
     other.updateVerticesIfNeeded()
 
     return isAABB(this._bb, other._bb)
   }
+
+  abstract getProjectionRange(axis: VectorData): ProjectionRange
 
   protected updateVerticesIfNeeded() {
     if (this.shouldUpdateVertices) {
@@ -26,5 +31,3 @@ export abstract class Shape {
 
   protected abstract updateVertices(): void
 }
-
-export namespace Shape {}

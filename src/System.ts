@@ -22,21 +22,26 @@ export abstract class System<S extends SignalMap> {
   fixedUpdate?(dT: number): void
   update?(dT: number): void
 
+  // WORLD helper methods
+
   createEntity(tag?: string) {
     return this.world.createEntity(tag)
   }
 
-  addComponents<C1 extends Component, C2 extends Component, C3 extends Component>(
-    entityId: number,
-    c1: C1,
-    c2?: C2,
-    c3?: C3,
-  ) {
+  addComponents<
+    C1 extends Component,
+    C2 extends Component,
+    C3 extends Component,
+    C4 extends Component,
+    C5 extends Component,
+  >(entityId: number, c1: C1, c2?: C2, c3?: C3, c4?: C4, c5?: C5) {
     if (!this.world.hasEntity(entityId)) return
 
     this.world.addComponent(c1, entityId)
     if (c2) this.world.addComponent(c2, entityId)
     if (c3) this.world.addComponent(c3, entityId)
+    if (c4) this.world.addComponent(c4, entityId)
+    if (c5) this.world.addComponent(c5, entityId)
   }
 
   getComponent<T extends Component>(

@@ -2,7 +2,7 @@ import { Point, Transform } from 'pixi.js'
 import { Geometry } from '../../geometry'
 import { Collision, CollisionMap } from '../../collision'
 import type { Physics } from '../../physics'
-import { Circle, Shape } from './shapes'
+import { Circle, Shape } from '../../geometry/shapes'
 
 export class Collider {
   readonly collisions = new Map<number, Collision.Instance>()
@@ -30,9 +30,12 @@ export class Collider {
     return this.canCollide(other) && this.shape.hasAABB(other.shape)
   }
 
-  // findContact(B: Collider, includePoints: boolean = false): Collision.Shape.Contact | undefined {
-  //   return this.shape.findContact(B.shape, includePoints)
-  // }
+  findCollision(other: Collider, includePoints: boolean = false): Collision | undefined {
+    if (!this.hasAABB(other)) {
+      return undefined
+    }
+    return this.shape.getOverlap(B.shape, includePoints)
+  }
 
   // evaluateRayIntersection(ray: Collision.Ray) {
   //   this.shape.evaluateRayIntersection(ray)
