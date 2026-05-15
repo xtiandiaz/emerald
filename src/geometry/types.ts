@@ -6,14 +6,9 @@ export type BoundingBox = {
   max: PointData
 }
 
-export interface Vertex {
-  index: number
-  point: PointData
-}
-
 export type ProjectionRange = Range
 
 export interface ProjectionOverlap {
   depth: number
-  normal: Vector
+  axis: Vector
 }

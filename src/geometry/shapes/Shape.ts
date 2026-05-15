@@ -9,8 +9,6 @@ export abstract class Shape {
   protected readonly _bb: BoundingBox = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } }
   private shouldUpdateVertices = true
 
-  constructor() {}
-
   abstract get center(): Point
 
   hasAABB(other: Shape): boolean {

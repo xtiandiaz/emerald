@@ -1,13 +1,15 @@
-import { Point } from 'pixi.js'
-import { ProjectionOverlap } from './types'
+import { Point, PointData } from 'pixi.js'
+import { ProjectionOverlap, ProjectionRange } from './types'
 import { Circle, Polygon, Shape } from './shapes'
 import { hasProjectionOverlap, overlapDepth } from './utils'
 import { Vector } from '../types'
 
-export class ShapeOverlap implements ProjectionOverlap {
-  constructor(
+export class ShapeOverlap {
+  points?: PointData[]
+
+  private constructor(
     public depth: number,
-    public normal: Point,
+    public normal: Vector,
   ) {}
 
   static from(a: Shape, b: Shape): ShapeOverlap | undefined {
@@ -28,7 +30,8 @@ export class ShapeOverlap implements ProjectionOverlap {
         return this.fromPolygonToPolygon(a, b)
       }
     }
-    return
+
+    throw new Error('Undefined overlap')
   }
 
   static fromCircleToCircle(a: Circle, b: Circle): ShapeOverlap | undefined {
@@ -40,48 +43,106 @@ export class ShapeOverlap implements ProjectionOverlap {
     }
     const dist = Math.sqrt(distSqrd)
 
-    return new ShapeOverlap(radii - dist, diffPos.divideByScalar(dist))
+    return new this(radii - dist, diffPos.divideByScalar(dist))
   }
 
   static fromCircleToPolygon(a: Circle, b: Polygon): ShapeOverlap | undefined {
     const cv = b.getClosestVertex(a.center)![1]
-    let axis = new Point(cv.x - a.center.x, cv.y - a.center.y)
+    const axis = new Point(cv.x - a.center.x, cv.y - a.center.y)
     axis.normalize(axis)
     let proj_a = a.getProjectionRange(axis)
     let proj_b = b.getProjectionRange(axis)
     if (!hasProjectionOverlap(proj_a, proj_b)) {
       return
     }
-    let depth = overlapDepth(proj_a, proj_b)
+    const projOverlap: ProjectionOverlap = { depth: overlapDepth(proj_a, proj_b), axis }
 
-    for (let i = 0; i < b._vertices.length; i++) {
-      b._vertices[(i + 1) % b._vertices.length]!.subtract(b._vertices[i]!, axis)
-        .orthogonalize(axis)
-        .normalize(axis)
-      proj_a = a.getProjectionRange(axis)
-      proj_b = b.getProjectionRange(axis)
-      if (!hasProjectionOverlap(proj_a, proj_b)) {
-        return
-      }
-      depth = Math.min(depth, overlapDepth(proj_a, proj_b))
+    if (
+      !this.hasVerticesProjectionOverlap(
+        b._vertices,
+        b.getProjectionRange,
+        a.getProjectionRange,
+        projOverlap,
+      )
+    ) {
+      return
     }
 
-    this.correctDirectionIfNeeded(a, b, axis)
+    this.correctDirectionIfNeeded(a, b, projOverlap.axis)
 
-    return new this(depth, axis)
+    return this.fromProjectionOverlap(projOverlap)
   }
 
   static fromPolygonToCircle(a: Polygon, b: Circle): ShapeOverlap | undefined {
-    return
+    const overlap = this.fromCircleToPolygon(b, a)
+    overlap?.normal.multiplyScalar(-1, overlap.normal)
+
+    return overlap
   }
 
   static fromPolygonToPolygon(a: Polygon, b: Polygon): ShapeOverlap | undefined {
-    return
+    const projOverlap: ProjectionOverlap = { depth: Infinity, axis: new Point() }
+
+    if (
+      !this.hasVerticesProjectionOverlap(
+        a._vertices,
+        a.getProjectionRange,
+        b.getProjectionRange,
+        projOverlap,
+      ) ||
+      !this.hasVerticesProjectionOverlap(
+        b._vertices,
+        b.getProjectionRange,
+        a.getProjectionRange,
+        projOverlap,
+      )
+    ) {
+      return
+    }
+
+    this.correctDirectionIfNeeded(a, b, projOverlap.axis)
+
+    return this.fromProjectionOverlap(projOverlap)
   }
 
-  static correctDirectionIfNeeded(a: Shape, b: Shape, normal: Vector) {
+  private static hasVerticesProjectionOverlap(
+    vertices_a: Point[],
+    proj_a: (axis: PointData) => ProjectionRange,
+    proj_b: (axis: PointData) => ProjectionRange,
+    result: ProjectionOverlap,
+  ): boolean {
+    const axis = new Point()
+    let range_a: ProjectionRange,
+      range_b: ProjectionRange,
+      depth = Infinity
+
+    for (let i = 0; i < vertices_a.length; i++) {
+      vertices_a[(i + 1) % vertices_a.length]!.subtract(vertices_a[i]!, axis)
+        .orthogonalize(axis)
+        .normalize(axis)
+      range_a = proj_a(axis)
+      range_b = proj_b(axis)
+
+      if (!hasProjectionOverlap(range_a, range_b)) {
+        return false
+      }
+      depth = overlapDepth(range_a, range_b)
+      if (depth < result.depth) {
+        result.depth = depth
+        result.axis.copyFrom(axis)
+      }
+    }
+
+    return true
+  }
+
+  private static correctDirectionIfNeeded(a: Shape, b: Shape, normal: Vector) {
     if (b.center.subtract(a.center).dot(normal) < 0) {
       normal.multiplyScalar(-1, normal)
     }
+  }
+
+  private static fromProjectionOverlap(projOverlap: ProjectionOverlap): ShapeOverlap {
+    return new this(projOverlap.depth, projOverlap.axis.clone())
   }
 }

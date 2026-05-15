@@ -22,13 +22,11 @@ export abstract class System<S extends SignalMap> {
   fixedUpdate?(dT: number): void
   update?(dT: number): void
 
-  // WORLD helper methods
-
   createEntity(tag?: string) {
     return this.world.createEntity(tag)
   }
 
-  addComponents<
+  addComponent<
     C1 extends Component,
     C2 extends Component,
     C3 extends Component,

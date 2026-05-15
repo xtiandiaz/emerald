@@ -1,5 +1,5 @@
 import { PointData } from 'pixi.js'
-import { BoundingBox, ProjectionOverlap, ProjectionRange } from '.'
+import { BoundingBox, ProjectionRange } from '.'
 
 export const toDegrees = (radians: number) => (radians * 180) / Math.PI
 export const toRadians = (degrees: number) => (degrees * Math.PI) / 180
@@ -14,19 +14,6 @@ export const hasProjectionOverlap = (a: ProjectionRange, b: ProjectionRange): bo
 
 export const overlapDepth = (a: ProjectionRange, b: ProjectionRange): number => {
   return Math.min(a.max - b.min, b.max - a.min)
-}
-
-export function getMinProjectionOverlapDepth(
-  a: ProjectionRange,
-  b: ProjectionRange,
-  otherDepth: number,
-): number {
-  if (!hasProjectionOverlap(a, b)) {
-    return otherDepth
-  }
-  const depth = Math.min(a.max - b.min, b.max - a.min)
-
-  return depth < otherDepth ? depth : otherDepth
 }
 
 export function getClosestPoint(

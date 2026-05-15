@@ -1,11 +1,33 @@
 import { Point, PointData } from 'pixi.js'
-import { getClosestPoint, ProjectionRange, Shape, Vertex } from '..'
+import { getClosestPoint, ProjectionRange, Shape } from '..'
+import { EMath } from '../../extras'
 
 export class Polygon extends Shape {
-  readonly _vertices: Point[] = []
+  readonly _vertices: Point[]
+  private readonly localVertices: PointData[]
+
+  constructor(vertices: PointData[]) {
+    super()
+
+    this.localVertices = vertices.map((v) => ({ x: v.x, y: v.y }))
+    this._vertices = vertices.map((v) => new Point(v.x, v.y))
+  }
 
   get center(): Point {
     throw new Error('Method not implemented.')
+  }
+
+  static from(radius: number, sides: number): Polygon {
+    sides = EMath.clamp(Math.round(sides), 3, 16)
+    radius = EMath.clamp(radius, 1, Infinity)
+    const vertices: PointData[] = []
+    const angleStep = (2 * Math.PI) / sides
+
+    for (let i = 0; i < sides; i++) {
+      vertices.push({ x: radius * Math.cos(i * angleStep), y: radius * Math.sin(i * angleStep) })
+    }
+
+    return new this(vertices)
   }
 
   getProjectionRange(axis: PointData): ProjectionRange {
@@ -25,6 +47,22 @@ export class Polygon extends Shape {
   }
 
   protected updateVertices(): void {
-    throw new Error('Method not implemented.')
+    const matrix = this._transform.matrix
+    let v: Point
+
+    this._bb.min.x = Infinity
+    this._bb.max.x = -Infinity
+    this._bb.min.y = Infinity
+    this._bb.max.y = -Infinity
+
+    for (let i = 0; i < this.localVertices.length; i++) {
+      v = this._vertices[i]!
+      matrix.apply(this.localVertices[i]!, v)
+
+      this._bb.min.x = Math.min(this._bb.min.x, v.x)
+      this._bb.max.x = Math.max(this._bb.max.x, v.x)
+      this._bb.min.y = Math.min(this._bb.min.y, v.y)
+      this._bb.max.y = Math.max(this._bb.max.y, v.y)
+    }
   }
 }

@@ -43,11 +43,10 @@ export abstract class Scene<S extends SignalMap> extends World {
 
     this.connections.forEach((c) => c.disconnect())
 
-    super.clear()
+    this.renderer.removeListener('resize', this.onResized)
 
     // this.debugDisplay?.deinit()
 
-    this.renderer.removeListener('resize', this.onResized)
     this.destroy({ children: true, texture: true, textureSource: true })
   }
 
@@ -62,8 +61,9 @@ export abstract class Scene<S extends SignalMap> extends World {
   _update(dT: number) {
     for (const e of this._entities.values()) {
       const t = e.components.get(Transform.name) as Transform
-      if (!t) continue
-
+      if (!t) {
+        continue
+      }
       for (const c of e.components.values()) {
         if (c instanceof Container) {
           c.position.set(t.position.x, t.position.y)
@@ -78,8 +78,6 @@ export abstract class Scene<S extends SignalMap> extends World {
     })
   }
 
-  /* SYSTEMS */
-
   createSystem<T extends System<S>>(constructor: System.Constructor<S, T>): T {
     this.removeSystem(constructor.name)
     const s = new constructor(this, this.renderer.screen, this.signaler)
@@ -92,8 +90,6 @@ export abstract class Scene<S extends SignalMap> extends World {
     this.systems.get(key)?.deinit?.()
     return this.systems.delete(key)
   }
-
-  /* Private */
 
   private onResized() {
     this.inputPad.setSize(Screen.width, Screen.height)

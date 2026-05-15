@@ -1,4 +1,4 @@
-import { Container, RenderLayer } from 'pixi.js'
+import { Container, DestroyOptions, RenderLayer } from 'pixi.js'
 import { Component, Entity } from '.'
 
 export class World extends Container {
@@ -146,9 +146,11 @@ export class World extends Container {
     return e.components.delete(key)
   }
 
-  clear() {
+  destroy(options?: DestroyOptions): void {
     this._entities.clear()
     this.tags.clear()
+
+    super.destroy(options)
   }
 
   // private onComponentAdded<K extends keyof C>(_: K, component: C[K], entity: Entity<C>) {

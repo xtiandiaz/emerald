@@ -1,6 +1,7 @@
 export type SignalMap = {
   'entity-added': {
     id: number
+    tag?: string
   }
   'entity-removed': {
     id: number

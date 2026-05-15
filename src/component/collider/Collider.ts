@@ -2,7 +2,7 @@ import { Point, Transform } from 'pixi.js'
 import { Geometry } from '../../geometry'
 import { Collision, CollisionMap } from '../../collision'
 import type { Physics } from '../../physics'
-import { Circle, Shape } from '../../geometry/shapes'
+import { Circle, Rectangle, Polygon, Shape } from '../../geometry/shapes'
 
 export class Collider {
   readonly collisions = new Map<number, Collision.Instance>()
@@ -32,14 +32,10 @@ export class Collider {
 
   findCollision(other: Collider, includePoints: boolean = false): Collision | undefined {
     if (!this.hasAABB(other)) {
-      return undefined
+      return
     }
     return this.shape.getOverlap(B.shape, includePoints)
   }
-
-  // evaluateRayIntersection(ray: Collision.Ray) {
-  //   this.shape.evaluateRayIntersection(ray)
-  // }
 }
 
 export namespace Collider {
@@ -50,42 +46,16 @@ export namespace Collider {
 
   export type Contact = Collision.Shape.Contact
 
-  export const circle = (radius: number) => {
-    return new Collider(new Circle(radius))
+  export const circle = (radius: number, layer?: number) => {
+    return new Collider(new Circle(radius), layer)
   }
-
-  // export const rectangle = (width: number, height: number, options?: Partial<Collider.Options>) => {
-  //   const halfW = width / 2
-  //   const halfH = height / 2
-
-  //   return new Collider(
-  //     new Collision.Shape.Polygon(
-  //       [
-  //         new Point(-halfW, -halfH),
-  //         new Point(halfW, -halfH),
-  //         new Point(halfW, halfH),
-  //         new Point(-halfW, halfH),
-  //       ],
-  //       options,
-  //     ),
-  //   )
-  // }
-
-  // export const regularPolygon = (
-  //   radius: number,
-  //   sides: number,
-  //   options?: Partial<Collider.Options>,
-  // ) => {
-  //   return new Collider(
-  //     new Collision.Shape.Polygon(
-  //       Geometry.Polygon.createRegularPolygonVertices(radius, sides),
-  //       options,
-  //     ),
-  //     options,
-  //   )
-  // }
-
-  // export const polygon = (vertices: Point[], options?: Partial<Collider.Options>) => {
-  //   return new Collider(new Collision.Shape.Polygon(vertices, options), options)
-  // }
+  export const rectangle = (width: number, height: number, layer?: number) => {
+    return new Collider(new Rectangle(width, height), layer)
+  }
+  export const regularPolygon = (radius: number, sides: number, layer?: number) => {
+    return new Collider(Polygon.from(radius, sides), layer)
+  }
+  export const polygon = (vertices: Point[], layer?: number) => {
+    return new Collider(new Polygon(vertices), layer)
+  }
 }
