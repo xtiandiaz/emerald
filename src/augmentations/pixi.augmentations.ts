@@ -1,22 +1,135 @@
-import { ObservablePoint, Point, type PointData } from 'pixi.js'
-import { Vector, type VectorData } from '..'
+import { ObservablePoint, Point, PointData } from 'pixi.js'
 import { EMath } from '../extras'
 
 declare global {
   interface Vector2Math {
-    clamp<T extends PointData = Point>(min: PointData, max: PointData, out_vector?: T): T
-    clampScalar<T extends PointData = Point>(min: number, max: number, out_vector?: T): T
-    clampMagnitude<T extends PointData = Point>(maxMagnitude: number, out_vector?: T): T
-    crossScalar<T extends PointData = Point>(scalar: number, out_vector?: T): T
-    divideBy<T extends PointData = Point>(other: T, out_vector?: T): T
-    divideByScalar<T extends PointData = Point>(scalar: number, out_vector?: T): T
-    isNearlyEqual(other: PointData, minDistance?: number): boolean
+    isNearlyEqualTo(other: PointData, minDistance?: number): boolean
 
-    orthogonalize<T extends VectorData = Vector>(out_vector?: T): T
+    magnitudeSquared(): number
+    magnitude(): number
+
+    add<T extends PointData = Point>(other: PointData, out_point?: T): T
+    subtract<T extends PointData = Point>(other: PointData, out_point?: T): T
+    multiplyBy<T extends PointData = Point>(other: PointData, out_point?: T): T
+    multiplyByScalar<T extends PointData = Point>(scalar: number, out_point?: T): T
+    divideBy<T extends PointData = Point>(other: PointData, out_point?: T): T
+    divideByScalar<T extends PointData = Point>(scalar: number, out_point?: T): T
+
+    dot(other: PointData): number
+    cross(other: PointData): number
+    crossByScalar<T extends PointData = Point>(scalar: number, out_vector?: T): T
+
+    clamp<T extends PointData = Point>(min: PointData, max: PointData, out_vector?: T): T
+    clampByScalar<T extends PointData = Point>(min: number, max: number, out_vector?: T): T
+    clampByMagnitude<T extends PointData = Point>(maxMagnitude: number, out_vector?: T): T
+
+    normalize<T extends PointData = Point>(out_vector?: T): T
+    orthogonalize<T extends PointData = Point>(out_vector?: T): T
   }
 }
 
-Point.prototype.clamp = ObservablePoint.prototype.clamp = function <T extends PointData = Point>(
+Point.prototype.magnitudeSquared = ObservablePoint.prototype.magnitudeSquared = function (
+  this,
+): number {
+  return this.x * this.x + this.y * this.y
+}
+Point.prototype.magnitude = ObservablePoint.prototype.magnitude = function (this): number {
+  return Math.sqrt(this.magnitudeSquared())
+}
+
+Point.prototype.isNearlyEqualTo = ObservablePoint.prototype.isNearlyEqualTo = function (
+  other: PointData,
+  minDistance: number = 0.001,
+): boolean {
+  return this.subtract(other).magnitudeSquared() <= minDistance * minDistance
+}
+
+Point.prototype.add = ObservablePoint.prototype.add = function <T extends PointData>(
+  this,
+  other: PointData,
+  out_point?: T,
+): T {
+  out_point ??= new Point() as PointData as T
+  const result = out_point ?? this
+  result.x = this.x + other.x
+  result.y = this.y + other.y
+
+  return out_point
+}
+Point.prototype.subtract = ObservablePoint.prototype.subtract = function <T extends PointData>(
+  this,
+  other: PointData,
+  out_point?: T,
+): T {
+  out_point ??= new Point() as PointData as T
+  const result = out_point ?? this
+  result.x = this.x - other.x
+  result.y = this.y - other.y
+
+  return out_point
+}
+Point.prototype.multiplyBy = ObservablePoint.prototype.multiplyBy = function <T extends PointData>(
+  this,
+  other: PointData,
+  out_vector?: T,
+): T {
+  out_vector ??= new Point() as PointData as T
+  out_vector.x = this.x * other.x
+  out_vector.y = this.y * other.y
+
+  return out_vector
+}
+Point.prototype.multiplyByScalar = ObservablePoint.prototype.multiplyByScalar = function <
+  T extends PointData,
+>(this, scalar: number, out_vector?: T): T {
+  out_vector ??= new Point() as PointData as T
+  out_vector.x = this.x * scalar
+  out_vector.y = this.y * scalar
+
+  return out_vector
+}
+Point.prototype.divideBy = ObservablePoint.prototype.divideBy = function <T extends PointData>(
+  this,
+  other: PointData,
+  out_vector?: T,
+): T {
+  out_vector ??= new Point() as PointData as T
+  out_vector.x = this.x / other.x
+  out_vector.y = this.y / other.y
+
+  return out_vector
+}
+Point.prototype.divideByScalar = ObservablePoint.prototype.divideByScalar = function <
+  T extends PointData,
+>(this, scalar: number, out_vector?: T): T {
+  out_vector ??= new Point() as PointData as T
+  out_vector.x = this.x / scalar
+  out_vector.y = this.y / scalar
+
+  return out_vector
+}
+
+Point.prototype.dot = ObservablePoint.prototype.dot = function (this, other: PointData): number {
+  return this.x * other.x + this.y * other.y
+}
+Point.prototype.cross = ObservablePoint.prototype.cross = function (
+  this,
+  other: PointData,
+): number {
+  return this.x * other.y - this.y * other.x
+}
+Point.prototype.crossByScalar = ObservablePoint.prototype.crossByScalar = function <
+  T extends PointData,
+>(this, scalar: number, out_vector?: T) {
+  out_vector ??= new Point() as PointData as T
+  const x = this.x
+  out_vector.x = -this.y * scalar
+  out_vector.y = x * scalar
+
+  return out_vector
+}
+
+Point.prototype.clamp = ObservablePoint.prototype.clamp = function <T extends PointData>(
   this,
   min: PointData,
   max: PointData,
@@ -28,8 +141,7 @@ Point.prototype.clamp = ObservablePoint.prototype.clamp = function <T extends Po
 
   return out_point
 }
-
-Point.prototype.clampScalar = ObservablePoint.prototype.clampScalar = function <
+Point.prototype.clampByScalar = ObservablePoint.prototype.clampByScalar = function <
   T extends PointData = Point,
 >(this, min: number, max: number, out_point?: T): T {
   out_point ??= new Point() as PointData as T
@@ -38,57 +150,31 @@ Point.prototype.clampScalar = ObservablePoint.prototype.clampScalar = function <
 
   return out_point
 }
-
-Vector.prototype.clampMagnitude = function <T extends VectorData = Vector>(
+Point.prototype.clampByMagnitude = function <T extends PointData = Point>(
   this,
   maxMagnitude: number,
   out_vector?: T,
 ): T {
-  out_vector ??= new Vector() as VectorData as T
+  out_vector ??= new Point() as PointData as T
   const magnitude = this.magnitude()
   this.multiplyScalar(Math.min(magnitude, maxMagnitude) / magnitude, out_vector)
 
   return out_vector
 }
 
-Vector.prototype.crossScalar = function <T extends VectorData = Vector>(
+Point.prototype.normalize = ObservablePoint.prototype.normalize = function <T extends PointData>(
   this,
-  scalar: number,
   out_vector?: T,
-) {
-  out_vector ??= new Vector() as VectorData as T
-  const x = this.x
-  out_vector.x = -this.y * scalar
-  out_vector.y = x * scalar
-
-  return out_vector
-}
-
-Point.prototype.divideBy = ObservablePoint.prototype.divideBy = function <
-  T extends PointData = Point,
->(this, other: T, out_vector?: T): T {
+): T {
   out_vector ??= new Point() as PointData as T
-  out_vector.x = this.x / other.x
-  out_vector.y = this.y / other.y
+  const mag = this.magnitude()
+  out_vector.x /= mag
+  out_vector.y /= mag
 
   return out_vector
 }
-
-Point.prototype.divideByScalar = ObservablePoint.prototype.divideByScalar = function <
-  T extends PointData = Point,
->(this, scalar: number, out_point?: T): T {
-  return this.divideBy(new Point(scalar, scalar) as PointData as T, out_point)
-}
-
-Point.prototype.isNearlyEqual = ObservablePoint.prototype.isNearlyEqual = function (
-  other: PointData,
-  minDistance: number = 0.001,
-): boolean {
-  return this.subtract(other).magnitudeSquared() <= minDistance * minDistance
-}
-
-Vector.prototype.orthogonalize = function <T extends VectorData = Vector>(this, out_vector?: T): T {
-  out_vector ??= new Vector() as VectorData as T
+Point.prototype.orthogonalize = function <T extends PointData>(this, out_vector?: T): T {
+  out_vector ??= new Point() as PointData as T
   const x = this.x
   out_vector.x = -this.y
   out_vector.y = x

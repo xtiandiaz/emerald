@@ -1,9 +1,13 @@
 import { Point, PointData } from 'pixi.js'
-import { getClosestPoint, ProjectionRange, Shape } from '..'
+import { calculatePolygonAttributes, getClosestPoint, ProjectionRange, Shape } from '..'
 import { EMath } from '../../extras'
 
 export class Polygon extends Shape {
   readonly _vertices: Point[]
+
+  protected readonly __center: Point
+  protected readonly _area: number
+
   private readonly localVertices: PointData[]
 
   constructor(vertices: PointData[]) {
@@ -11,10 +15,7 @@ export class Polygon extends Shape {
 
     this.localVertices = vertices.map((v) => ({ x: v.x, y: v.y }))
     this._vertices = vertices.map((v) => new Point(v.x, v.y))
-  }
-
-  get center(): Point {
-    throw new Error('Method not implemented.')
+    ;({ area: this._area, center: this.__center } = calculatePolygonAttributes(this._vertices))
   }
 
   static from(radius: number, sides: number): Polygon {
@@ -47,6 +48,8 @@ export class Polygon extends Shape {
   }
 
   protected updateVertices(): void {
+    super.updateVertices()
+
     const matrix = this._transform.matrix
     let v: Point
 

@@ -114,7 +114,7 @@ export class PhysicsEngine {
 
       // Tangent
       vr.subtract(N.multiplyScalar(vrDotN), this.T)
-      if (this.T.isNearlyEqual(zeroVector, Physics.NEARLY_ZERO_MAGNITUDE)) {
+      if (this.T.isNearlyEqualTo(zeroVector, Physics.NEARLY_ZERO_MAGNITUDE)) {
         continue
       } else {
         this.T.normalize(this.T)

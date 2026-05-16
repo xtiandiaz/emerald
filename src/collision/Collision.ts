@@ -1,11 +1,20 @@
 import { Matrix, Point, Transform, type PointData } from 'pixi.js'
 import { Vector, Range, type VectorData } from '..'
+import { Collider } from '../component'
 import { Geometry, ProjectionOverlap } from '../geometry'
 import { EMath } from '../extras'
+import { ShapeOverlap } from '../geometry'
 
-export interface Collision extends ProjectionOverlap {
-  points?: Collision.ContactPoint[]
+export class Collision {
+  static from(a: Collider, b: Collider): Collision | undefined {
+    // const shapeOverlap = a.getShapeOverlap(b)
+    return
+  }
 }
+
+// export interface Collision extends ProjectionOverlap {
+//   points?: Collision.ContactPoint[]
+// }
 
 export namespace Collision {
   export type LayerMap = Map<number, number>
@@ -396,7 +405,7 @@ export namespace Collision {
         incEdge.projectAndClipByMargin(axis, axis.dot(refEdge.b))
 
         const cps: Shape.ContactPoint[] = []
-        const refN = axis.crossScalar(-1)
+        const refN = axis.crossByScalar(-1)
         const aRefProj = refN.dot(refEdge.a)
         let depth = aRefProj - refN.dot(incEdge.a)
         if (depth >= 0) {

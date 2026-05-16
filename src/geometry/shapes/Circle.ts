@@ -4,28 +4,40 @@ import { ProjectionRange } from '..'
 import { VectorData } from '../..'
 
 export class Circle extends Shape {
-  constructor(readonly radius: number) {
+  protected readonly __center = new Point()
+  protected readonly _area: number
+
+  constructor(private readonly _radius: number) {
     super()
+
+    this._area = Math.PI * _radius * _radius
   }
 
-  get center(): Point {
-    return this._transform.position
+  get radius(): number {
+    return this._radius * this._transform.scale.x
   }
 
   getProjectionRange(axis: VectorData): ProjectionRange {
-    const dot = axis.x * this.center.x + axis.y * this.center.y
+    const dot = axis.x * this._center.x + axis.y * this._center.y
     const projs: [number, number] = [dot - this.radius, dot + this.radius]
 
     return projs[0] < projs[1] ? { min: projs[0], max: projs[1] } : { min: projs[1], max: projs[0] }
   }
 
   protected updateVertices(): void {
-    const pos = this._transform.position,
-      scale = this._transform.scale
+    super.updateVertices()
 
-    this._bb.min.x = pos.x - this.radius * scale.x
-    this._bb.min.y = pos.y - this.radius * scale.y
-    this._bb.max.x = pos.x + this.radius * scale.x
-    this._bb.max.y = pos.y + this.radius * scale.y
+    const pos = this._transform.position
+
+    this._bb.min.x = pos.x - this.radius
+    this._bb.min.y = pos.y - this.radius
+    this._bb.max.x = pos.x + this.radius
+    this._bb.max.y = pos.y + this.radius
+  }
+
+  protected calculateAttributesIfNeeded(): void {
+    if (this._center === undefined) {
+      console.log('center is und')
+    }
   }
 }

@@ -7,12 +7,12 @@ import { Vector } from '../types'
 export class ShapeOverlap {
   points?: PointData[]
 
-  private constructor(
+  constructor(
     public depth: number,
     public normal: Vector,
   ) {}
 
-  static from(a: Shape, b: Shape): ShapeOverlap | undefined {
+  static from(a: Shape, b: Shape, includePoints: boolean): ShapeOverlap | undefined {
     if (!a.hasAABB(b)) {
       return
     }
@@ -36,7 +36,7 @@ export class ShapeOverlap {
 
   static fromCircleToCircle(a: Circle, b: Circle): ShapeOverlap | undefined {
     const radii = a.radius + b.radius
-    const diffPos = b.center.subtract(a.center)
+    const diffPos = b._center.subtract(a._center)
     const distSqrd = diffPos.magnitudeSquared()
     if (distSqrd >= radii * radii) {
       return
@@ -47,8 +47,8 @@ export class ShapeOverlap {
   }
 
   static fromCircleToPolygon(a: Circle, b: Polygon): ShapeOverlap | undefined {
-    const cv = b.getClosestVertex(a.center)![1]
-    const axis = new Point(cv.x - a.center.x, cv.y - a.center.y)
+    const cv = b.getClosestVertex(a._center)![1]
+    const axis = new Point(cv.x - a._center.x, cv.y - a._center.y)
     axis.normalize(axis)
     let proj_a = a.getProjectionRange(axis)
     let proj_b = b.getProjectionRange(axis)
@@ -60,8 +60,8 @@ export class ShapeOverlap {
     if (
       !this.hasVerticesProjectionOverlap(
         b._vertices,
-        b.getProjectionRange,
-        a.getProjectionRange,
+        (axis) => b.getProjectionRange(axis),
+        (axis) => a.getProjectionRange(axis),
         projOverlap,
       )
     ) {
@@ -86,14 +86,14 @@ export class ShapeOverlap {
     if (
       !this.hasVerticesProjectionOverlap(
         a._vertices,
-        a.getProjectionRange,
-        b.getProjectionRange,
+        (axis) => a.getProjectionRange(axis),
+        (axis) => b.getProjectionRange(axis),
         projOverlap,
       ) ||
       !this.hasVerticesProjectionOverlap(
         b._vertices,
-        b.getProjectionRange,
-        a.getProjectionRange,
+        (axis) => b.getProjectionRange(axis),
+        (axis) => a.getProjectionRange(axis),
         projOverlap,
       )
     ) {
@@ -137,8 +137,8 @@ export class ShapeOverlap {
   }
 
   private static correctDirectionIfNeeded(a: Shape, b: Shape, normal: Vector) {
-    if (b.center.subtract(a.center).dot(normal) < 0) {
-      normal.multiplyScalar(-1, normal)
+    if (b._center.subtract(a._center).dot(normal) < 0) {
+      normal.multiplyByScalar(-1, normal)
     }
   }
 

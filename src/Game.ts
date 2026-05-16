@@ -1,8 +1,6 @@
 import { Application, Ticker, type ApplicationOptions } from 'pixi.js'
 import { Scene, Screen, SignalMap, SignalBus, Disconnectable } from '.'
 import { EMath } from './extras'
-//
-import * as PIXI from 'pixi.js'
 import gsap from 'gsap'
 import PixiPlugin from 'gsap/PixiPlugin'
 
@@ -21,7 +19,7 @@ export class Game<S extends SignalMap> extends Application {
   constructor() {
     super()
 
-    PixiPlugin.registerPIXI(PIXI)
+    PixiPlugin.registerPIXI(import('pixi.js'))
     gsap.registerPlugin(PixiPlugin)
   }
 

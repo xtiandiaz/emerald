@@ -1,6 +1,7 @@
 import { Point, Transform } from 'pixi.js'
-import { Collision, CollisionMap } from '../../collision'
-import { Circle, Rectangle, Polygon, Shape } from '../../geometry/shapes'
+import { Collision, CollisionMap } from '../collision'
+import { Circle, Rectangle, Polygon, Shape } from '../geometry/shapes'
+import { ShapeOverlap } from '../geometry'
 
 export class Collider {
   readonly collisions = new Map<number, Collision.Instance>()
@@ -13,6 +14,7 @@ export class Collider {
   get _transform(): Transform {
     return this.shape._transform
   }
+
   // get _physicsProperties(): Physics.AreaProperties {
   //   return this.shape._areaProperties.physics
   // }
@@ -28,11 +30,12 @@ export class Collider {
     return this.canCollide(other) && this.shape.hasAABB(other.shape)
   }
 
-  findCollision(other: Collider, includePoints: boolean = false): Collision | undefined {
-    if (!this.hasAABB(other)) {
-      return
-    }
-    // return this.shape.getOverlap(B.shape, includePoints)
+  getShapeOverlap(other: Collider, includePoints: boolean): ShapeOverlap | undefined {
+    return ShapeOverlap.from(this.shape, other.shape, includePoints)
+  }
+
+  collides(other: Collider): boolean {
+    return this.getShapeOverlap(other, false) != undefined
   }
 }
 

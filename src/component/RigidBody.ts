@@ -3,7 +3,7 @@ import { Vector, type Component, type VectorData } from '..'
 import { Physics } from '../physics'
 import { EMath } from '../extras'
 
-export class RigidBody implements Component {
+export class RigidBody {
   readonly _transform = new Transform()
 
   isStatic: boolean

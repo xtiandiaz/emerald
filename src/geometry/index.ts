@@ -1,4 +1,5 @@
 export * from './types'
 export * from './shapes'
+export * from './ShapeOverlap'
 export * from './Geometry'
 export * from './utils'
