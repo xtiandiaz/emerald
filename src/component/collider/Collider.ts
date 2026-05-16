@@ -1,7 +1,5 @@
 import { Point, Transform } from 'pixi.js'
-import { Geometry } from '../../geometry'
 import { Collision, CollisionMap } from '../../collision'
-import type { Physics } from '../../physics'
 import { Circle, Rectangle, Polygon, Shape } from '../../geometry/shapes'
 
 export class Collider {
@@ -34,7 +32,7 @@ export class Collider {
     if (!this.hasAABB(other)) {
       return
     }
-    return this.shape.getOverlap(B.shape, includePoints)
+    // return this.shape.getOverlap(B.shape, includePoints)
   }
 }
 

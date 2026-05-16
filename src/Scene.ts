@@ -66,9 +66,9 @@ export abstract class Scene<S extends SignalMap> extends World {
       }
       for (const c of e.components.values()) {
         if (c instanceof Container) {
-          c.position.set(t.position.x, t.position.y)
+          c.setFromMatrix(t.matrix)
         } else if (c instanceof Collider) {
-          c._transform.position.set(t.position.x, t.position.y)
+          c._transform.setFromMatrix(t.matrix)
         }
       }
     }

@@ -20,9 +20,12 @@ export class Circle extends Shape {
   }
 
   protected updateVertices(): void {
-    this._bb.min.x = this._transform.position.x - this.radius
-    this._bb.min.y = this._transform.position.y - this.radius
-    this._bb.max.x = this._transform.position.x + this.radius
-    this._bb.max.y = this._transform.position.y + this.radius
+    const pos = this._transform.position,
+      scale = this._transform.scale
+
+    this._bb.min.x = pos.x - this.radius * scale.x
+    this._bb.min.y = pos.y - this.radius * scale.y
+    this._bb.max.x = pos.x + this.radius * scale.x
+    this._bb.max.y = pos.y + this.radius * scale.y
   }
 }

@@ -150,7 +150,7 @@ export class World extends Container {
     this._entities.clear()
     this.tags.clear()
 
-    super.destroy(options)
+    super.destroy(true)
   }
 
   // private onComponentAdded<K extends keyof C>(_: K, component: C[K], entity: Entity<C>) {

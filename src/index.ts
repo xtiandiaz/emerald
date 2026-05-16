@@ -7,7 +7,7 @@ export * from './System'
 export * from './Scene'
 
 export * from './signal'
-export * from './input'
+export * from './Event'
 
 export * from './Screen'
 export * from './Tweener'

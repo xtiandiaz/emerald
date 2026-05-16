@@ -1,5 +1,12 @@
 import { Rectangle } from 'pixi.js'
-import { type World, type Component, type SignalMap, type Signaler, Disconnectable } from './'
+import {
+  type World,
+  type Component,
+  type SignalMap,
+  type Signaler,
+  Disconnectable,
+  Signal,
+} from './'
 
 export abstract class System<S extends SignalMap> {
   protected readonly connections = Array<Disconnectable>()
@@ -20,7 +27,10 @@ export abstract class System<S extends SignalMap> {
   }
 
   fixedUpdate?(dT: number): void
+
   update?(dT: number): void
+
+  /* HELPER METHODS */
 
   createEntity(tag?: string) {
     return this.world.createEntity(tag)
@@ -33,8 +43,9 @@ export abstract class System<S extends SignalMap> {
     C4 extends Component,
     C5 extends Component,
   >(entityId: number, c1: C1, c2?: C2, c3?: C3, c4?: C4, c5?: C5) {
-    if (!this.world.hasEntity(entityId)) return
-
+    if (!this.world.hasEntity(entityId)) {
+      return
+    }
     this.world.addComponent(c1, entityId)
     if (c2) this.world.addComponent(c2, entityId)
     if (c3) this.world.addComponent(c3, entityId)
@@ -47,6 +58,14 @@ export abstract class System<S extends SignalMap> {
     entityId: number,
   ): T | undefined {
     return this.world.getComponent(typeValue, entityId)
+  }
+
+  emit<K extends keyof S>(key: K, signal: S[K]): void {
+    this.signaler.emit(key, signal)
+  }
+
+  connect<K extends keyof S>(key: K, connector: Signal.Connector<S[K]>) {
+    this.connections.push(this.signaler.connect(key, connector))
   }
 }
 
