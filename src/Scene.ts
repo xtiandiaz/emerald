@@ -1,7 +1,8 @@
 import { Container, Rectangle, Renderer, Sprite, Transform } from 'pixi.js'
-import { World, System, Screen, SignalMap, Signaler, Disconnectable, Collider } from '.'
+import { World, System, Screen, SignalMap, Signaler, Disconnectable } from '.'
+import { Collider, RigidBody } from './components'
 import { Debug } from './debug'
-import { Shape } from './geometry/shapes'
+import { PhysicsSystem } from './systems'
 
 export abstract class Scene<S extends SignalMap> extends World {
   protected readonly systems = new Map<string, System<S>>()
@@ -47,34 +48,43 @@ export abstract class Scene<S extends SignalMap> extends World {
 
     // this.debugDisplay?.deinit()
 
-    this.destroy({ children: true, texture: true, textureSource: true })
+    this.destroy()
   }
 
-  fixedUpdate?(dT: number): void
-  _fixedUpdate(dT: number) {
+  fixedUpdate?(dt: number): void
+  _fixedUpdate(dt: number) {
     this.systems.forEach((s) => {
-      s.fixedUpdate?.(dT)
+      s.fixedUpdate?.(dt)
     })
   }
 
-  update?(dT: number): void
-  _update(dT: number) {
+  update?(dt: number): void
+  _update(dt: number) {
+    let rb: RigidBody, t: Transform
     for (const e of this._entities.values()) {
-      const t = e.components.get(Transform.name) as Transform
-      if (!t) {
-        continue
-      }
-      for (const c of e.components.values()) {
-        if (c instanceof Container) {
-          c.setFromMatrix(t.matrix)
-        } else if (c instanceof Collider) {
-          c._transform.setFromMatrix(t.matrix)
+      rb = e.components.get(RigidBody.name) as RigidBody
+      if (rb) {
+        // Only update Containers here; the Colliders are being fixed-updated by the PhysicsSystem
+        for (const c of e.components.values().filter((c) => c instanceof Container)) {
+          c.setFromMatrix(rb.matrix)
+        }
+      } else {
+        t = e.components.get(Transform.name) as Transform
+        if (!t) {
+          continue
+        }
+        for (const c of e.components.values()) {
+          if (c instanceof Container) {
+            c.setFromMatrix(t.matrix)
+          } else if (c instanceof Collider) {
+            c._transform.setFromMatrix(t.matrix)
+          }
         }
       }
     }
 
     this.systems.forEach((s) => {
-      s.update?.(dT)
+      s.update?.(dt)
     })
   }
 
@@ -122,5 +132,6 @@ export namespace Scene {
   export interface Options {
     bounds: Rectangle
     debug: Debug.Options.Scene
+    physics?: PhysicsSystem.Options
   }
 }

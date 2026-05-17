@@ -1,6 +1,6 @@
-import { Polygon } from '.'
+import { ConvexPolygon } from '.'
 
-export class Rectangle extends Polygon {
+export class Rectangle extends ConvexPolygon {
   constructor(width: number, height: number) {
     const halfW = width / 2
     const halfH = height / 2

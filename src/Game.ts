@@ -38,9 +38,9 @@ export class Game<S extends SignalMap> extends Application {
 
     this.connections.forEach((c) => c.disconnect())
 
-    this.renderer.removeAllListeners()
-    this.ticker.remove(this.fixedUpdate, this)
-    this.ticker.remove(this.update, this)
+    this.renderer?.removeAllListeners()
+    this.ticker?.remove(this.fixedUpdate, this)
+    this.ticker?.remove(this.update, this)
   }
 
   async createScene(constructor: Scene.Constructor<S>) {

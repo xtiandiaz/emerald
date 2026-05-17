@@ -43,23 +43,24 @@ export function getClosestPoint(
   Calculation of centroid following 'integraph of a polygon' technique: 
   https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
   
-  For the area, using 'shoelace' formula: https://en.wikipedia.org/wiki/Shoelace_formula
+  For the area, using 'shoelace' formula, particularly the 'triangle' one: 
+  https://en.wikipedia.org/wiki/Shoelace_formula
 */
-export function calculatePolygonAttributes(vertices: PointData[]): { area: number; center: Point } {
-  const center = new Point()
+export function calculatePolygonCentroid(vertices: PointData[]): Point {
+  const centroid = new Point()
   let v0: PointData, v1: PointData
-  let paralleloArea: number
-  let area = 0
+  let paralleloArea: number,
+    area = 0
 
   for (let i = 0; i < vertices.length; i++) {
     v0 = vertices[i]!
     v1 = vertices[(i + 1) % vertices.length]!
     paralleloArea = EMath.cross(v0, v1)
-    center.x += (v0.x + v1.x) * paralleloArea
-    center.y += (v0.y + v1.y) * paralleloArea
-    area += paralleloArea * 0.5 // = triangle area
+    centroid.x += (v0.x + v1.x) * paralleloArea
+    centroid.y += (v0.y + v1.y) * paralleloArea
+    area += paralleloArea * 0.5 // -> triangle area
   }
-  center.divideByScalar(6 * area, center)
+  centroid.divideByScalar(6 * area, centroid)
 
-  return { area, center }
+  return centroid
 }

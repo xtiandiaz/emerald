@@ -1,4 +1,3 @@
-export * from './Component'
 export * from './Transform'
 export * from './Collider'
 export * from './RigidBody'

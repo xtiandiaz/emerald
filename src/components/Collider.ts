@@ -1,7 +1,6 @@
 import { Point, Transform } from 'pixi.js'
 import { Collision, CollisionMap } from '../collision'
-import { Circle, Rectangle, Polygon, Shape } from '../geometry/shapes'
-import { ShapeOverlap } from '../geometry'
+import { Shape, ShapeOverlap, Circle, Rectangle, ConvexPolygon } from '../geometry'
 
 export class Collider {
   readonly collisions = new Map<number, Collision.Instance>()
@@ -14,10 +13,6 @@ export class Collider {
   get _transform(): Transform {
     return this.shape._transform
   }
-
-  // get _physicsProperties(): Physics.AreaProperties {
-  //   return this.shape._areaProperties.physics
-  // }
 
   canCollide(other: Collider, map?: CollisionMap): boolean {
     return (
@@ -54,9 +49,9 @@ export namespace Collider {
     return new Collider(new Rectangle(width, height), layer)
   }
   export const regularPolygon = (radius: number, sides: number, layer?: number) => {
-    return new Collider(Polygon.from(radius, sides), layer)
+    return new Collider(ConvexPolygon.from(radius, sides), layer)
   }
-  export const polygon = (vertices: Point[], layer?: number) => {
-    return new Collider(new Polygon(vertices), layer)
+  export const convexPolygon = (vertices: Point[], layer?: number) => {
+    return new Collider(new ConvexPolygon(vertices), layer)
   }
 }

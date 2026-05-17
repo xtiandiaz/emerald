@@ -1,13 +1,10 @@
-import { Transform, Point, type PointData } from 'pixi.js'
-import { Vector, type Component, type VectorData } from '..'
+import { Transform, type PointData } from 'pixi.js'
+import { Vector, type VectorData } from '..'
 import { Physics } from '../physics'
 import { EMath } from '../extras'
 
-export class RigidBody {
-  readonly _transform = new Transform()
-
-  isStatic: boolean
-  isKinematic: boolean
+export class RigidBody extends Transform {
+  type: RigidBody.Type = 'dynamic'
 
   readonly velocity = new Vector()
   readonly _drag = new Vector()
@@ -30,8 +27,12 @@ export class RigidBody {
   private _invInertia = 0
 
   constructor(options?: Partial<RigidBody.Options>) {
-    this.isStatic = options?.isStatic ?? false
-    this.isKinematic = options?.isKinematic ?? false
+    super()
+
+    if (options?.type) this.type = options.type
+
+    if (options?.initialPosition)
+      this.position.set(options.initialPosition.x, options.initialPosition.y)
 
     if (options?.restitution != undefined) this.setRestitution(options?.restitution)
     if (options?.friction) this.setFriction(options.friction)
@@ -43,19 +44,6 @@ export class RigidBody {
     if (options?.initialAngularVelocity) this.angularVelocity = options.initialAngularVelocity
   }
 
-  get position(): Point {
-    return this._transform.position
-  }
-  get rotation(): number {
-    return this._transform.rotation
-  }
-  set rotation(value: number) {
-    this._transform.rotation = value
-  }
-  get scale(): number {
-    return this._transform.scale.x
-  }
-
   get mass(): number {
     return this._mass
   }
@@ -63,7 +51,7 @@ export class RigidBody {
     return this._invMass
   }
   set mass(value: number) {
-    if (this.isStatic) return
+    if (this.type === 'static') return
 
     this._mass = EMath.clamp(value, 0, Infinity)
     this._invMass = this._mass > 0 ? 1 / this._mass : 0
@@ -76,7 +64,7 @@ export class RigidBody {
     return this._invInertia
   }
   set inertia(value: number) {
-    if (this.isStatic) return
+    if (this.type === 'static') return
 
     this._inertia = EMath.clamp(value, 0, Infinity)
     this._invInertia = this._inertia > 0 ? 1 / this._inertia : 0
@@ -114,17 +102,19 @@ export class RigidBody {
   applyForce(force: PointData, position?: PointData) {
     // https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/physicstutorials/3angularmotion/Physics%20-%20Angular%20Motion.pdf
     this._force.add(force, this._force)
-    this.torque += this._transform.matrix
-      .applyInverse(position ?? this._transform.position) // ??
+    this.torque += this.matrix
+      .applyInverse(position ?? this.position) // ??
       .cross(force)
   }
 }
 
 export namespace RigidBody {
-  export interface Options {
-    isStatic: boolean
-    isKinematic: boolean
+  export type Type = 'dynamic' | 'kinematic' | 'static'
 
+  export interface Options {
+    type: RigidBody.Type
+
+    initialPosition: PointData
     initialVelocity: VectorData
     initialAngularVelocity: number
 

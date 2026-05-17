@@ -6,7 +6,7 @@ import { Collision } from '../collision'
 import { Physics, PhysicsEngine } from '../physics'
 import { Debug } from '../debug'
 
-export class PhysicsSystem<C extends Components, S extends Signals> extends CollisionSystem<C, S> {
+export class PhysicsSystem<S extends Signals> extends CollisionSystem<C, S> {
   gravity: Physics.Gravity = {
     vector: new Vector(0, 1),
     value: 9.81, // m/s^2

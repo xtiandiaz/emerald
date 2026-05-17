@@ -1,6 +1,7 @@
 import { Point, PointData } from 'pixi.js'
 import { ProjectionOverlap, ProjectionRange } from './types'
-import { Circle, Polygon, Shape } from './shapes'
+import { Shape } from '..'
+import { Circle, ConvexPolygon } from './shapes'
 import { hasProjectionOverlap, overlapDepth } from './utils'
 import { Vector } from '../types'
 
@@ -20,13 +21,13 @@ export class ShapeOverlap {
     if (a instanceof Circle) {
       if (b instanceof Circle) {
         return this.fromCircleToCircle(a, b)
-      } else if (b instanceof Polygon) {
+      } else if (b instanceof ConvexPolygon) {
         return this.fromCircleToPolygon(a, b)
       }
-    } else if (a instanceof Polygon) {
+    } else if (a instanceof ConvexPolygon) {
       if (b instanceof Circle) {
         return this.fromPolygonToCircle(a, b)
-      } else if (b instanceof Polygon) {
+      } else if (b instanceof ConvexPolygon) {
         return this.fromPolygonToPolygon(a, b)
       }
     }
@@ -46,7 +47,7 @@ export class ShapeOverlap {
     return new this(radii - dist, diffPos.divideByScalar(dist))
   }
 
-  static fromCircleToPolygon(a: Circle, b: Polygon): ShapeOverlap | undefined {
+  static fromCircleToPolygon(a: Circle, b: ConvexPolygon): ShapeOverlap | undefined {
     const cv = b.getClosestVertex(a._center)![1]
     const axis = new Point(cv.x - a._center.x, cv.y - a._center.y)
     axis.normalize(axis)
@@ -73,14 +74,14 @@ export class ShapeOverlap {
     return this.fromProjectionOverlap(projOverlap)
   }
 
-  static fromPolygonToCircle(a: Polygon, b: Circle): ShapeOverlap | undefined {
+  static fromPolygonToCircle(a: ConvexPolygon, b: Circle): ShapeOverlap | undefined {
     const overlap = this.fromCircleToPolygon(b, a)
     overlap?.normal.multiplyScalar(-1, overlap.normal)
 
     return overlap
   }
 
-  static fromPolygonToPolygon(a: Polygon, b: Polygon): ShapeOverlap | undefined {
+  static fromPolygonToPolygon(a: ConvexPolygon, b: ConvexPolygon): ShapeOverlap | undefined {
     const projOverlap: ProjectionOverlap = { depth: Infinity, axis: new Point() }
 
     if (

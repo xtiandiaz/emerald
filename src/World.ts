@@ -114,6 +114,7 @@ export class World extends Container {
       return
     }
     e.components.set(component.constructor.name, component)
+    console.log([...e.components.values().map((c) => c.constructor.name)].join(','))
 
     if (component instanceof Container) {
       this.addChild(component)
@@ -121,8 +122,11 @@ export class World extends Container {
     return component
   }
 
-  hasComponent<T extends Component>(type: T, entityId: number): boolean {
-    return this._entities.get(entityId)?.components.has(type.constructor.name) ?? false
+  hasComponent<T extends Component>(
+    typeValue: Component.Constructor<T>,
+    entityId: number,
+  ): boolean {
+    return this._entities.get(entityId)?.components.has(typeValue.name) ?? false
   }
 
   getComponent<T extends Component>(
@@ -130,6 +134,15 @@ export class World extends Container {
     entityId: number,
   ): T | undefined {
     return this._entities.get(entityId)?.components.get(typeValue.name) as T
+  }
+
+  getAllComponents<T extends Component>(typeValue: Component.Constructor<T>): Map<number, T> {
+    return new Map(
+      this._entities
+        .values()
+        .filter((e) => e.components.has(typeValue.name))
+        .map((e) => [e.id, e.components.get(typeValue.name)! as T]),
+    )
   }
 
   removeComponent(key: string, entityId: number): boolean {
@@ -146,25 +159,12 @@ export class World extends Container {
     return e.components.delete(key)
   }
 
-  destroy(options?: DestroyOptions): void {
+  destroy(): void {
     this._entities.clear()
     this.tags.clear()
 
     super.destroy(true)
   }
-
-  // private onComponentAdded<K extends keyof C>(_: K, component: C[K], entity: Entity<C>) {
-  // if (component instanceof Collider) {
-  //   this.resetColliderEntry(component, entity.id)
-  //   this.getComponent('rigid-body', entity.id)?.resetAreaProperties(component._physicsProperties)
-  // } else if (component instanceof RigidBody) {
-  //   component._transform.setFromMatrix(entity.getGlobalTransform())
-  //   const collider = this.getComponent('collider', entity.id)
-  //   if (collider) {
-  //     component.resetAreaProperties(collider._physicsProperties)
-  //   }
-  // }
-  // }
 }
 
 export namespace World {

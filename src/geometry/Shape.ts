@@ -1,6 +1,6 @@
 import { Point, Transform } from 'pixi.js'
-import { BoundingBox, isAABB, ProjectionRange } from '..'
-import { VectorData } from '../..'
+import { BoundingBox, isAABB, ProjectionRange } from '.'
+import { VectorData } from '..'
 
 export abstract class Shape {
   readonly _center = new Point()
@@ -8,15 +8,11 @@ export abstract class Shape {
     observer: { _onUpdate: () => (this.shouldUpdateVertices = true) },
   })
 
-  protected abstract readonly __center: Point
-  protected abstract readonly _area: number
+  abstract readonly _localCenter: Point
+
   protected readonly _bb: BoundingBox = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } }
 
   private shouldUpdateVertices = true
-
-  get area(): number {
-    return this._area * this._transform.scale.x * this._transform.scale.y
-  }
 
   hasAABB(other: Shape): boolean {
     this.updateVerticesIfNeeded()
@@ -28,7 +24,7 @@ export abstract class Shape {
   abstract getProjectionRange(axis: VectorData): ProjectionRange
 
   protected updateVertices(): void {
-    this._transform.position.add(this.__center, this._center)
+    this._transform.position.add(this._localCenter, this._center)
   }
 
   protected updateVerticesIfNeeded() {

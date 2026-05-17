@@ -1,24 +1,21 @@
 import { Point, PointData } from 'pixi.js'
-import { calculatePolygonAttributes, getClosestPoint, ProjectionRange, Shape } from '..'
+import { calculatePolygonCentroid, getClosestPoint, ProjectionRange, Shape } from '..'
 import { EMath } from '../../extras'
 
-export class Polygon extends Shape {
+export class ConvexPolygon extends Shape {
   readonly _vertices: Point[]
-
-  protected readonly __center: Point
-  protected readonly _area: number
-
-  private readonly localVertices: PointData[]
+  readonly _localVertices: PointData[]
+  readonly _localCenter: Point // -> Centroid
 
   constructor(vertices: PointData[]) {
     super()
 
-    this.localVertices = vertices.map((v) => ({ x: v.x, y: v.y }))
+    this._localVertices = vertices.map((v) => ({ x: v.x, y: v.y }))
     this._vertices = vertices.map((v) => new Point(v.x, v.y))
-    ;({ area: this._area, center: this.__center } = calculatePolygonAttributes(this._vertices))
+    this._localCenter = calculatePolygonCentroid(vertices)
   }
 
-  static from(radius: number, sides: number): Polygon {
+  static from(radius: number, sides: number): ConvexPolygon {
     sides = EMath.clamp(Math.round(sides), 3, 16)
     radius = EMath.clamp(radius, 1, Infinity)
     const vertices: PointData[] = []
@@ -50,7 +47,6 @@ export class Polygon extends Shape {
   protected updateVertices(): void {
     super.updateVertices()
 
-    const matrix = this._transform.matrix
     let v: Point
 
     this._bb.min.x = Infinity
@@ -58,9 +54,9 @@ export class Polygon extends Shape {
     this._bb.min.y = Infinity
     this._bb.max.y = -Infinity
 
-    for (let i = 0; i < this.localVertices.length; i++) {
+    for (let i = 0; i < this._localVertices.length; i++) {
       v = this._vertices[i]!
-      matrix.apply(this.localVertices[i]!, v)
+      this._transform.matrix.apply(this._localVertices[i]!, v)
 
       this._bb.min.x = Math.min(this._bb.min.x, v.x)
       this._bb.max.x = Math.max(this._bb.max.x, v.x)

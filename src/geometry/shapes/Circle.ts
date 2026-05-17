@@ -1,16 +1,12 @@
 import { Point } from 'pixi.js'
-import { Shape } from '.'
-import { ProjectionRange } from '..'
+import { Shape, ProjectionRange } from '..'
 import { VectorData } from '../..'
 
 export class Circle extends Shape {
-  protected readonly __center = new Point()
-  protected readonly _area: number
+  readonly _localCenter = new Point()
 
   constructor(private readonly _radius: number) {
     super()
-
-    this._area = Math.PI * _radius * _radius
   }
 
   get radius(): number {
@@ -33,11 +29,5 @@ export class Circle extends Shape {
     this._bb.min.y = pos.y - this.radius
     this._bb.max.x = pos.x + this.radius
     this._bb.max.y = pos.y + this.radius
-  }
-
-  protected calculateAttributesIfNeeded(): void {
-    if (this._center === undefined) {
-      console.log('center is und')
-    }
   }
 }
