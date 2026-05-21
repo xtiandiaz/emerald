@@ -3,7 +3,7 @@ import { Shape, ProjectionRange } from '..'
 import { VectorData } from '../..'
 
 export class Circle extends Shape {
-  readonly _localCenter = new Point()
+  readonly localCenter = new Point()
 
   constructor(private readonly _radius: number) {
     super()
@@ -14,7 +14,7 @@ export class Circle extends Shape {
   }
 
   getProjectionRange(axis: VectorData): ProjectionRange {
-    const dot = axis.x * this._center.x + axis.y * this._center.y
+    const dot = axis.x * this.center.x + axis.y * this.center.y
     const projs: [number, number] = [dot - this.radius, dot + this.radius]
 
     return projs[0] < projs[1] ? { min: projs[0], max: projs[1] } : { min: projs[1], max: projs[0] }

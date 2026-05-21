@@ -6,12 +6,12 @@ export class Collider {
   readonly collisions = new Map<number, Collision.Instance>()
 
   constructor(
-    private shape: Shape,
+    public _shape: Shape,
     public layer = 1,
   ) {}
 
   get _transform(): Transform {
-    return this.shape._transform
+    return this._shape._transform
   }
 
   canCollide(other: Collider, map?: CollisionMap): boolean {
@@ -22,15 +22,11 @@ export class Collider {
   }
 
   hasAABB(other: Collider): boolean {
-    return this.canCollide(other) && this.shape.hasAABB(other.shape)
-  }
-
-  getShapeOverlap(other: Collider, includePoints: boolean): ShapeOverlap | undefined {
-    return ShapeOverlap.from(this.shape, other.shape, includePoints)
+    return this.canCollide(other) && this._shape.hasAABB(other._shape)
   }
 
   collides(other: Collider): boolean {
-    return this.getShapeOverlap(other, false) != undefined
+    return ShapeOverlap.from(this._shape, other._shape) != undefined
   }
 }
 

@@ -1,4 +1,4 @@
-import { PointData } from 'pixi.js'
+import { Point, PointData } from 'pixi.js'
 import { Range, Vector } from '../types'
 
 export type BoundingBox = {

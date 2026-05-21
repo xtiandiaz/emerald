@@ -21,7 +21,6 @@ declare global {
 
     dot(other: PointData): number
     cross(other: PointData): number
-    crossByScalar<T extends PointData = Point>(scalar: number, out_vector?: T): T
 
     clamp<T extends PointData = Point>(min: PointData, max: PointData, out_vector?: T): T
     clampByScalar<T extends PointData = Point>(min: number, max: number, out_vector?: T): T
@@ -152,16 +151,6 @@ Point.prototype.cross = ObservablePoint.prototype.cross = function (
   other: PointData,
 ): number {
   return this.x * other.y - this.y * other.x
-}
-Point.prototype.crossByScalar = ObservablePoint.prototype.crossByScalar = function <
-  T extends PointData,
->(this, scalar: number, out_point?: T) {
-  out_point ??= new Point() as PointData as T
-  const x = this.x
-  out_point.x = -this.y * scalar
-  out_point.y = x * scalar
-
-  return out_point
 }
 
 Point.prototype.clamp = ObservablePoint.prototype.clamp = function <T extends PointData>(

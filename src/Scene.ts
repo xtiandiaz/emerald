@@ -1,5 +1,5 @@
 import { Container, Rectangle, Renderer, Sprite, Transform } from 'pixi.js'
-import { World, System, Screen, SignalMap, Signaler, Disconnectable } from '.'
+import { World, System, Screen, SignalMap, Signaler, Disconnectable, Component } from '.'
 import { Collider, RigidBody } from './components'
 import { Debug } from './debug'
 import { PhysicsSystem } from './systems'
@@ -9,14 +9,14 @@ export abstract class Scene<S extends SignalMap> extends World {
   protected readonly connections = Array<Disconnectable>()
 
   private inputPad = new Sprite()
-  // private rayCaster = new RayCaster(this._colliders)
+  private options!: Scene.Options
+  private physicsSystem?: PhysicsSystem<S>
   private debugDisplay?: Debug.Display
 
   constructor(
     protected renderer: Renderer,
     protected signaler: Signaler<S>,
   ) {
-    // protected readonly options?: Partial<Scene.Options>,
     super()
 
     // this.boundsArea = options?.bounds ?? new Rectangle(0, 0, Screen.width, Screen.height)
@@ -28,7 +28,9 @@ export abstract class Scene<S extends SignalMap> extends World {
   }
 
   async init?(): Promise<void>
-  async _init(): Promise<void> {
+  async _init(options?: Partial<Scene.Options>): Promise<void> {
+    this.options = { ...options }
+
     await this.init?.()
 
     // this.initDebugIfNeeded(signals)
@@ -64,7 +66,8 @@ export abstract class Scene<S extends SignalMap> extends World {
     for (const e of this._entities.values()) {
       rb = e.components.get(RigidBody.name) as RigidBody
       if (rb) {
-        // Only update Containers here; the Colliders are being fixed-updated by the PhysicsSystem
+        // Only updating Containers here, to reflect the RigidBody's transform.
+        // The Colliders are being fixed-updated accordingly by the PhysicsSystem
         for (const c of e.components.values().filter((c) => c instanceof Container)) {
           c.setFromMatrix(rb.matrix)
         }
@@ -82,17 +85,38 @@ export abstract class Scene<S extends SignalMap> extends World {
         }
       }
     }
-
     this.systems.forEach((s) => {
       s.update?.(dt)
     })
+  }
+
+  createEntity(tag?: string): number {
+    const id = super.createEntity(tag)
+    this.signaler.emit('entity-added', { id, tag })
+    return id
+  }
+
+  removeEntity(id: number): boolean {
+    const tag = this.getTag(id)
+    const wasRemoved = super.removeEntity(id)
+    if (wasRemoved) {
+      this.signaler?.emit('entity-removed', { id, tag })
+    }
+    return wasRemoved
+  }
+
+  addComponent<T extends Component>(component: T, entityId: number): T | undefined {
+    const c = super.addComponent(component, entityId)
+    if (c instanceof RigidBody && !this.physicsSystem) {
+      this.createSystem(PhysicsSystem)
+    }
+    return c
   }
 
   createSystem<T extends System<S>>(constructor: System.Constructor<S, T>): T {
     this.removeSystem(constructor.name)
     const s = new constructor(this, this.renderer.screen, this.signaler)
     this.systems.set(constructor.name, s)
-
     return s
   }
 
@@ -130,8 +154,8 @@ export namespace Scene {
   ) => Scene<S>
 
   export interface Options {
-    bounds: Rectangle
-    debug: Debug.Options.Scene
+    // bounds: Rectangle
+    // debug: Debug.Options.Scene
     physics?: PhysicsSystem.Options
   }
 }

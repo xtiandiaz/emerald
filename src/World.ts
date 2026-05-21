@@ -45,20 +45,14 @@ export class World extends Container {
 
   createEntity(tag?: string): number {
     const id = this.nextEntityId++
-
     this._entities.set(id, {
       id,
       tag,
       components: new Map<string, Component>(),
     })
-
     if (tag) {
       this.tag(id, tag)
     }
-
-    // this.getLayer(Stage.Layer.ENTITIES).attach(entity)
-    // this.addChild(entity)
-
     return id
   }
 
@@ -79,9 +73,7 @@ export class World extends Container {
     if (e.tag) {
       this.tags.get(e.tag)?.delete(e.id)
     }
-
     return this._entities.delete(id)
-    // this.signals?.emit('entity-removed', { removedId: id, tag })
   }
 
   tag(entityId: number, tag: string) {
@@ -114,8 +106,6 @@ export class World extends Container {
       return
     }
     e.components.set(component.constructor.name, component)
-    console.log([...e.components.values().map((c) => c.constructor.name)].join(','))
-
     if (component instanceof Container) {
       this.addChild(component)
     }
@@ -155,7 +145,6 @@ export class World extends Container {
     if (c instanceof Container) {
       this.removeChild(c)
     }
-
     return e.components.delete(key)
   }
 

@@ -1,18 +1,23 @@
 import { Point, PointData } from 'pixi.js'
-import { calculatePolygonCentroid, getClosestPoint, ProjectionRange, Shape } from '..'
+import { getClosestPoint, ProjectionRange, Segment, Shape } from '..'
 import { EMath } from '../../extras'
+import { VectorData } from '../../types'
 
 export class ConvexPolygon extends Shape {
   readonly _vertices: Point[]
   readonly _localVertices: PointData[]
-  readonly _localCenter: Point // -> Centroid
+  readonly localCenter: Point // -> Centroid
+
+  private readonly props = {
+    sides: [new Segment(), new Segment()],
+  }
 
   constructor(vertices: PointData[]) {
     super()
 
     this._localVertices = vertices.map((v) => ({ x: v.x, y: v.y }))
     this._vertices = vertices.map((v) => new Point(v.x, v.y))
-    this._localCenter = calculatePolygonCentroid(vertices)
+    this.localCenter = ConvexPolygon.calculateCentroid(vertices)
   }
 
   static from(radius: number, sides: number): ConvexPolygon {
@@ -28,7 +33,7 @@ export class ConvexPolygon extends Shape {
     return new this(vertices)
   }
 
-  getProjectionRange(axis: PointData): ProjectionRange {
+  getProjectionRange(axis: VectorData): ProjectionRange {
     const range: ProjectionRange = { min: Infinity, max: -Infinity }
     let proj: number
 
@@ -42,6 +47,18 @@ export class ConvexPolygon extends Shape {
 
   getClosestVertex(from: PointData): [index: number, point: PointData] {
     return getClosestPoint(this._vertices, from)!
+  }
+
+  _getSideAcross(axis: VectorData): Segment {
+    const vi = this.getVertexIndexWithMaxProjection(axis)
+    const v = this._vertices[vi]!
+    const prev_v = this._vertices[(vi == 0 ? this._vertices.length : vi) - 1]!
+    const next_v = this._vertices[(vi + 1) % this._vertices.length]!
+    return Segment.getMostPerpendicular(
+      this.props.sides[0].reset(prev_v, v),
+      this.props.sides[1].reset(v, next_v),
+      axis,
+    )
   }
 
   protected updateVertices(): void {
@@ -63,5 +80,47 @@ export class ConvexPolygon extends Shape {
       this._bb.min.y = Math.min(this._bb.min.y, v.y)
       this._bb.max.y = Math.max(this._bb.max.y, v.y)
     }
+  }
+
+  private getVertexIndexWithMaxProjection(axis: VectorData): number {
+    let maxProjection = -Infinity
+    let index = -1
+
+    for (let i = 0; i < this._vertices.length; i++) {
+      const proj = this._vertices[i]!.dot(axis)
+      if (proj > maxProjection) {
+        maxProjection = proj
+        index = i
+      }
+    }
+    return index
+  }
+}
+
+export namespace ConvexPolygon {
+  /* 
+    Calculation of centroid following 'integraph of a polygon' technique: 
+    https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
+    
+    For the area, using 'shoelace' formula, particularly the 'triangle' one: 
+    https://en.wikipedia.org/wiki/Shoelace_formula
+  */
+  export function calculateCentroid(vertices: PointData[]): Point {
+    const centroid = new Point()
+    let v0: PointData, v1: PointData
+    let paralleloArea: number,
+      area = 0
+
+    for (let i = 0; i < vertices.length; i++) {
+      v0 = vertices[i]!
+      v1 = vertices[(i + 1) % vertices.length]!
+      paralleloArea = EMath.cross(v0, v1)
+      centroid.x += (v0.x + v1.x) * paralleloArea
+      centroid.y += (v0.y + v1.y) * paralleloArea
+      area += paralleloArea * 0.5 // -> triangle area
+    }
+    centroid.divideByScalar(6 * area, centroid)
+
+    return centroid
   }
 }

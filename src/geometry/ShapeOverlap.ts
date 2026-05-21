@@ -6,18 +6,15 @@ import { hasProjectionOverlap, overlapDepth } from './utils'
 import { Vector } from '../types'
 
 export class ShapeOverlap {
-  points?: PointData[]
-
   constructor(
     public depth: number,
     public normal: Vector,
   ) {}
 
-  static from(a: Shape, b: Shape, includePoints: boolean): ShapeOverlap | undefined {
+  static from(a: Shape, b: Shape): ShapeOverlap | undefined {
     if (!a.hasAABB(b)) {
       return
     }
-
     if (a instanceof Circle) {
       if (b instanceof Circle) {
         return this.fromCircleToCircle(a, b)
@@ -37,19 +34,18 @@ export class ShapeOverlap {
 
   static fromCircleToCircle(a: Circle, b: Circle): ShapeOverlap | undefined {
     const radii = a.radius + b.radius
-    const diffPos = b._center.subtract(a._center)
+    const diffPos = b.center.subtract(a.center)
     const distSqrd = diffPos.magnitudeSquared()
     if (distSqrd >= radii * radii) {
       return
     }
     const dist = Math.sqrt(distSqrd)
-
     return new this(radii - dist, diffPos.divideByScalar(dist))
   }
 
   static fromCircleToPolygon(a: Circle, b: ConvexPolygon): ShapeOverlap | undefined {
-    const cv = b.getClosestVertex(a._center)![1]
-    const axis = new Point(cv.x - a._center.x, cv.y - a._center.y)
+    const cv = b.getClosestVertex(a.center)![1]
+    const axis = new Point(cv.x - a.center.x, cv.y - a.center.y)
     axis.normalize(axis)
     let proj_a = a.getProjectionRange(axis)
     let proj_b = b.getProjectionRange(axis)
@@ -68,7 +64,6 @@ export class ShapeOverlap {
     ) {
       return
     }
-
     this.correctDirectionIfNeeded(a, b, projOverlap.axis)
 
     return this.fromProjectionOverlap(projOverlap)
@@ -100,7 +95,6 @@ export class ShapeOverlap {
     ) {
       return
     }
-
     this.correctDirectionIfNeeded(a, b, projOverlap.axis)
 
     return this.fromProjectionOverlap(projOverlap)
@@ -133,12 +127,11 @@ export class ShapeOverlap {
         result.axis.copyFrom(axis)
       }
     }
-
     return true
   }
 
   private static correctDirectionIfNeeded(a: Shape, b: Shape, normal: Vector) {
-    if (b._center.subtract(a._center).dot(normal) < 0) {
+    if (b.center.subtract(a.center).dot(normal) < 0) {
       normal.multiplyByScalar(-1, normal)
     }
   }

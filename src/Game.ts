@@ -5,8 +5,6 @@ import gsap from 'gsap'
 import PixiPlugin from 'gsap/PixiPlugin'
 
 export class Game<S extends SignalMap> extends Application {
-  public isPaused = false
-
   protected readonly signalBus = new SignalBus<S>()
   protected readonly connections = Array<Disconnectable>()
   protected scene?: Scene<S>
@@ -16,7 +14,7 @@ export class Game<S extends SignalMap> extends Application {
     reserve: 0,
   }
 
-  constructor() {
+  constructor(private readonly state: Game.State) {
     super()
 
     PixiPlugin.registerPIXI(import('pixi.js'))
@@ -43,7 +41,7 @@ export class Game<S extends SignalMap> extends Application {
     this.ticker?.remove(this.update, this)
   }
 
-  async createScene(constructor: Scene.Constructor<S>) {
+  async createScene(constructor: Scene.Constructor<S>, options?: Partial<Scene.Options>) {
     // TODO Add optional transition sequence
 
     if (this.scene) {
@@ -52,14 +50,14 @@ export class Game<S extends SignalMap> extends Application {
     }
 
     const nextScene = new constructor(this.renderer, this.signalBus)
-    await nextScene._init()
+    await nextScene._init(options)
 
     this.scene = nextScene
     this.stage.addChild(nextScene)
   }
 
   private fixedUpdate(ticker: Ticker) {
-    if (this.isPaused) {
+    if (this.state.isPaused) {
       return
     }
     this.fixedTime.reserve = EMath.clamp(this.fixedTime.reserve + ticker.deltaMS, 0, 0.1)
@@ -72,7 +70,7 @@ export class Game<S extends SignalMap> extends Application {
   }
 
   private update(ticker: Ticker) {
-    if (this.isPaused) {
+    if (this.state.isPaused) {
       return
     }
     this.signalBus.emitQueued()
@@ -91,5 +89,9 @@ export class Game<S extends SignalMap> extends Application {
 export namespace Game {
   export interface Options extends ApplicationOptions {}
 
-  export type Constructor<S extends SignalMap> = new () => Game<S>
+  export interface State {
+    isPaused: boolean
+  }
+
+  export type Constructor<S extends SignalMap> = new (state: State) => Game<S>
 }

@@ -1,71 +1,66 @@
-import { Entity, World, System, Vector } from '..'
-import { CollisionSystem } from '.'
-import { type Components, Collider } from '../component'
-import type { Signals } from '../signals'
-import { Collision } from '../collision'
-import { Physics, PhysicsEngine } from '../physics'
-import { Debug } from '../debug'
+import { System } from '../System'
+import { SignalMap } from '../signal'
+import { Gravity, PhysicsEngine } from '../physics'
+import { Collision, CollisionMap } from '../collision'
+import { Collider, RigidBody } from '../components'
+import { Vector } from '../types'
 
-export class PhysicsSystem<S extends Signals> extends CollisionSystem<C, S> {
-  gravity: Physics.Gravity = {
-    vector: new Vector(0, 1),
-    value: 9.81, // m/s^2
-  }
-  PPM = 10 // Pixels Per Meter
-  protected iterations = 4
-  private engine = new PhysicsEngine()
-
-  constructor(options?: Partial<PhysicsSystem.Options>) {
-    super({ findsContactPoints: true, layerMap: options?.collisionLayerMap, debug: options?.debug })
-
-    if (options?.gravity) this.gravity = options.gravity
-    if (options?.PPM != undefined) this.PPM = options.PPM
-    if (options?.iterations) this.iterations = options.iterations
+export class PhysicsSystem<S extends SignalMap> extends System<S> {
+  private readonly engine = new PhysicsEngine()
+  private ops: PhysicsSystem.Options = {
+    gravity: new Vector(0, 9.81), // m/s^2,
+    iterations: 4,
+    pixelsPerMeter: 10,
   }
 
-  prepareCollider(collider: Collider, entity: Entity<C>, dT: number): void {
-    const body = entity.getComponent('rigid-body')
-    if (!body) {
-      super.prepareCollider(collider, entity, dT)
-      return
+  _init(options: Partial<PhysicsSystem.Options>) {
+    this.ops = { ...options, ...this.ops }
+  }
+
+  init(): void {}
+
+  fixedUpdate(dt: number): void {
+    const rbs = this.world.getAllComponents(RigidBody)
+    let i: number,
+      col_a: Collider | undefined,
+      col_b: Collider | undefined,
+      collision: Collision | undefined
+
+    dt /= this.ops.iterations
+    for (let it = 0; it < this.ops.iterations; it++) {
+      for (const [e, rb] of rbs) {
+        col_a = this.world.getComponent(Collider, e)
+        if (!col_a) {
+          continue
+        }
+        this.engine.stepBody(rb, this.ops.gravity, this.ops.pixelsPerMeter, dt)
+        col_a._transform.setFromMatrix(rb.matrix)
+      }
+      i = 1
+      for (const [ea, rb_a] of rbs) {
+        col_a = this.world.getComponent(Collider, ea)
+        if (!col_a) {
+          continue
+        }
+        for (const [eb, rb_b] of rbs.entries().drop(i)) {
+          col_b = this.world.getComponent(Collider, eb)
+          if (!col_b || !col_a.canCollide(col_b, this.ops.collisionMap)) {
+            continue
+          }
+          collision = Collision.from(col_a, col_b)
+          // console.log(collision)
+        }
+        i++
+      }
     }
-
-    this.engine.stepBody(body, this.gravity, this.PPM, dT)
-
-    collider._transform.setFromMatrix(body._transform.matrix)
-
-    // TODO unify the transform if possible, or move the update of the entity's transform to somewhere else
-    entity.setFromMatrix(body._transform.matrix)
-  }
-
-  fixedUpdate(stage: World<C>, toolkit: System.UpdateToolkit<S>, dT: number): void {
-    dT /= this.iterations
-    for (let it = 0; it < this.iterations; it++) {
-      super.fixedUpdate(stage, toolkit, dT)
-    }
-  }
-
-  resolveCollision(collision: CollisionSystem.Instance, stage: World<C>): void {
-    const bodyA = stage.getComponent('rigid-body', collision.idA)
-    const bodyB = stage.getComponent('rigid-body', collision.idB)
-    if (bodyA && bodyB) {
-      this.engine.resolveCollision(bodyA, bodyB, collision.contact)
-    }
-  }
-
-  protected initDebugIfNeeded(stage: World<C>, signals: Signals.Bus<S>): void {
-    super.initDebugIfNeeded(stage, signals)
-
-    signals.emit('debug-physics-enabled', { iterations: this.iterations })
   }
 }
 
 export namespace PhysicsSystem {
   export interface Options {
-    gravity: Physics.Gravity
+    gravity: Gravity
     iterations: number
-    PPM: number // Pixels Per Meter
-    collisionLayerMap?: Collision.LayerMap
-    debug?: Debug.Options.CollisionSystem
+    pixelsPerMeter: number
+    collisionMap?: CollisionMap
   }
 }

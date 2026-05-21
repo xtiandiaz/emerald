@@ -1,9 +1,8 @@
 import { Point, PointData } from 'pixi.js'
 import { BoundingBox, ProjectionRange } from '.'
-import { EMath } from '../extras'
 
-export const toDegrees = (radians: number) => (radians * 180) / Math.PI
-export const toRadians = (degrees: number) => (degrees * Math.PI) / 180
+export const degrees = (radians: number) => (radians * 180) / Math.PI
+export const radians = (degrees: number) => (degrees * Math.PI) / 180
 
 export const isAABB = (a: BoundingBox, b: BoundingBox): boolean => {
   return !(a.max.x < b.min.x || a.max.y < b.min.y || b.max.x < a.min.x || b.max.y < a.min.y)
@@ -37,30 +36,4 @@ export function getClosestPoint(
     }
   }
   return index >= 0 ? [index, at[index]] : undefined
-}
-
-/* 
-  Calculation of centroid following 'integraph of a polygon' technique: 
-  https://en.wikipedia.org/wiki/Centroid#Of_a_polygon
-  
-  For the area, using 'shoelace' formula, particularly the 'triangle' one: 
-  https://en.wikipedia.org/wiki/Shoelace_formula
-*/
-export function calculatePolygonCentroid(vertices: PointData[]): Point {
-  const centroid = new Point()
-  let v0: PointData, v1: PointData
-  let paralleloArea: number,
-    area = 0
-
-  for (let i = 0; i < vertices.length; i++) {
-    v0 = vertices[i]!
-    v1 = vertices[(i + 1) % vertices.length]!
-    paralleloArea = EMath.cross(v0, v1)
-    centroid.x += (v0.x + v1.x) * paralleloArea
-    centroid.y += (v0.y + v1.y) * paralleloArea
-    area += paralleloArea * 0.5 // -> triangle area
-  }
-  centroid.divideByScalar(6 * area, centroid)
-
-  return centroid
 }

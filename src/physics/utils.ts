@@ -19,7 +19,7 @@ export function calculatePhysicalShapeProperties(
   } else if (shape instanceof ConvexPolygon) {
     // For "Any Polygon" most explicitly described here
     // https://en.wikipedia.org/wiki/Second_moment_of_area
-    const centroid = shape._localCenter
+    const centroid = shape.localCenter
     const vertices = shape._localVertices
     const v0 = new Point(),
       v1 = new Point()

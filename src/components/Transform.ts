@@ -1,11 +1,11 @@
 import { Transform as PixiTransform, PointData } from 'pixi.js'
-import { toRadians } from '../geometry'
+import { radians } from '../geometry'
 
 export class Transform extends PixiTransform {
   constructor(options?: Partial<Transform.Options>) {
     super()
 
-    if (options?.angle) this.rotation = toRadians(options.angle)
+    if (options?.angle) this.rotation = radians(options.angle)
     if (options?.position) this.position.set(options.position.x, options.position.y)
     if (options?.rotation) this.rotation = options.rotation
     if (options?.scale) {
