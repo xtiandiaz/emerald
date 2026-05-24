@@ -1,32 +1,36 @@
-import { Matrix, Point, Transform, type PointData } from 'pixi.js'
-import { Vector, Range, type VectorData } from '..'
+import { Point, type PointData } from 'pixi.js'
+import { ShapeOverlap } from '.'
 import { Collider } from '../components'
-import { ShapeOverlap, Circle, ConvexPolygon, Geometry, Segment, Shape } from '../geometry'
-import { EMath } from '../extras'
+import { Circle, ConvexPolygon, Shape, Segment } from '../geometry'
 
 export class Collision {
-  contacts: [Collision.Contact, Collision.Contact] = [
+  _depth: number
+  _normal: Point
+  _contacts: [Collision.Contact, Collision.Contact] = [
     { point: new Point(), depth: 0 },
     { point: new Point(), depth: 0 },
   ]
-  contactCount = 0
+  _contactCount = 0
 
-  private readonly props: {
-    sides: [Segment, Segment]
-    point: Point
-    negNormal: Point
+  private readonly props = {
+    segments: [new Segment(), new Segment()],
+    point: new Point(),
+    negNormal: new Point(),
   }
 
-  constructor(private readonly shapeOverlap: ShapeOverlap) {
-    this.props = {
-      sides: [new Segment(), new Segment()],
-      point: new Point(),
-      negNormal: shapeOverlap.normal.multiplyByScalar(-1),
+  private constructor(shapeOverlap: ShapeOverlap) {
+    this._depth = shapeOverlap.depth
+    this._normal = shapeOverlap.normal.clone()
+  }
+
+  get totalContactsDepth(): number {
+    if (this._contactCount <= 0) {
+      return 0
+    } else if (this._contactCount === 1) {
+      return this._contacts[0].depth
+    } else {
+      return this._contacts[0].depth + this._contacts[1].depth
     }
-  }
-
-  get normal(): Vector {
-    return this.shapeOverlap.normal
   }
 
   static from(a: Collider, b: Collider): Collision | undefined {
@@ -39,494 +43,85 @@ export class Collision {
     return col
   }
 
-  private static setContacts(a: Shape, b: Shape, collision: Collision) {
+  private static setContacts(a: Shape, b: Shape, c: Collision) {
     if (a instanceof Circle) {
       if (b instanceof Circle) {
-        return this.setContactsFromCircleToCircle(a, b, collision)
+        return this.setContactsFromCircleToCircle(a, b, c)
       } else if (b instanceof ConvexPolygon) {
-        return this.setContactsFromCircleToPolygon(a, b, collision)
+        return this.setContactsFromCircleToPolygon(a, b, c)
       }
     } else if (a instanceof ConvexPolygon) {
       if (b instanceof Circle) {
-        return this.setContactsFromPolygonToCircle(a, b, collision)
+        return this.setContactsFromPolygonToCircle(a, b, c)
       } else if (b instanceof ConvexPolygon) {
-        return this.setContactsFromPolygonToPolygon(a, b, collision)
+        return this.setContactsFromPolygonToPolygon(a, b, c)
       }
     }
-
     throw new Error('Undefined collision')
   }
 
-  private static setContactsFromCircleToCircle(a: Circle, b: Circle, collision: Collision) {
-    collision.contactCount = 1
-    const contact = collision.contacts[0]
-    contact.point = a.center.add(collision.normal.multiplyScalar(b.radius))
-    contact.depth = collision.shapeOverlap.depth
+  private static setContactsFromCircleToCircle(a: Circle, b: Circle, c: Collision) {
+    c._contactCount = 1
+    const contact = c._contacts[0]
+    contact.point = a._center.add(c._normal.multiplyByScalar(b.radius))
+    contact.depth = c._depth
   }
-  private static setContactsFromCircleToPolygon(a: Circle, b: ConvexPolygon, collision: Collision) {
-    collision.contactCount = 1
-    collision.props.sides[0] = b._getSideAcross(collision.props.negNormal)
-    const contact = collision.contacts[0]
-    collision.props.sides[0].getClosestPoint(a.center, contact.point)
-    contact.depth = collision.shapeOverlap.depth
+
+  private static setContactsFromCircleToPolygon(a: Circle, b: ConvexPolygon, c: Collision) {
+    c._contactCount = 1
+    const contact = c._contacts[0]
+    b.getSideAcross(c.props.negNormal).getClosestPoint(a._center, contact.point)
+    contact.depth = c._depth
   }
-  private static setContactsFromPolygonToCircle(a: ConvexPolygon, b: Circle, collision: Collision) {
-    collision.contactCount = 1
-    collision.props.sides[0] = a._getSideAcross(collision.normal)
-    const contact = collision.contacts[0]
-    collision.props.sides[0].getClosestPoint(b.center, contact.point)
-    contact.depth = collision.shapeOverlap.depth
+
+  private static setContactsFromPolygonToCircle(a: ConvexPolygon, b: Circle, c: Collision) {
+    c._contactCount = 1
+    const contact = c._contacts[0]
+    a.getSideAcross(c._normal).getClosestPoint(b._center, contact.point)
+    contact.depth = c._depth
   }
-  private static setContactsFromPolygonToPolygon(
-    a: ConvexPolygon,
-    b: ConvexPolygon,
-    collision: Collision,
-  ) {
-    const sa = collision.props.sides[0]
-    const sb = collision.props.sides[1]
-    sa.copyFrom(a._getSideAcross(collision.normal))
-    sb.copyFrom(b._getSideAcross(collision.props.negNormal))
-    const n = collision.normal
-    // 'Reference' and 'incident' sides; ref. is the most perpendicular to the collision's Normal,
-    // and thus used to clip the incident side's vertices to get the collision contact points
+
+  private static setContactsFromPolygonToPolygon(a: ConvexPolygon, b: ConvexPolygon, c: Collision) {
+    const normal = c._normal
+    const sa = a.getSideAcross(normal, c.props.segments[0])
+    const sb = b.getSideAcross(normal.multiplyByScalar(-1), c.props.segments[1])
+    // 'Reference' and 'Incident' sides; Ref. is the most perpendicular to the collision's Normal,
+    // and thus used to clip the Incident side's vertices to get the collision contact points
     // Source: https://dyn4j.org/2011/11/contact-points-using-clipping/
-    let ref_side: Segment, inc_side: Segment
-    if (Math.abs(sa._vector.dot(n)) < Math.abs(sb._vector.dot(n))) {
-      ref_side = sa
-      inc_side = sb
+    let ref: Segment, inc: Segment
+    if (Math.abs(sa._vector.dot(normal)) <= Math.abs(sb._vector.dot(normal))) {
+      ref = sa
+      inc = sb
     } else {
-      ref_side = sb
-      inc_side = sa
+      ref = sb
+      inc = sa
     }
-    // Normalize ref_side to use as axis
-    const axis = collision.props.point
-    ref_side._vector.normalize(axis)
-    inc_side.projectAndClipByMargin(axis, axis.dot(ref_side._p0))
+    const clip_normal = ref._vector.normalize()
+    let clip_margin = -1 * clip_normal.dot(ref.p0) // margin opposite to normal
+    inc.clipByMarginAlongRef(clip_margin, clip_normal)
 
-    axis.multiplyScalar(-1, axis)
-    inc_side.projectAndClipByMargin(axis, axis.dot(ref_side._p1))
+    clip_normal.multiplyByScalar(-1, clip_normal)
+    clip_margin = clip_normal.dot(ref.p1) // margin opposite to normal
+    inc.clipByMarginAlongRef(clip_margin, clip_normal)
 
-    const ref_normal = ref_side._vector.normalize(axis).orthogonalize(axis)
-    collision.contactCount = 0
-    const ref_p0_proj = ref_normal.dot(ref_side._p0)
-    let depth = ref_p0_proj - ref_normal.dot(inc_side._p0)
-    if (depth >= 0) {
-      collision.contacts[0].point.copyFrom(inc_side._p0)
-      collision.contacts[0].depth = depth
-      collision.contactCount++
+    const ref_normal = ref._vector.normalize().orthogonalize()
+    const ref_p0_proj = ref_normal.dot(ref.p0)
+    const setContactPoint = (inc_point: PointData) => {
+      let depth = ref_normal.dot(inc_point) - ref_p0_proj
+      if (depth < 0) return
+      const i = c._contactCount
+      c._contacts[i].depth = depth
+      c._contacts[i].point.copyFrom(inc_point)
+      c._contactCount++
     }
-    depth = ref_p0_proj - ref_normal.dot(inc_side._p1)
-    if (depth >= 0) {
-      collision.contacts[1].point.copyFrom(inc_side._p1)
-      collision.contacts[1].depth = depth
-      collision.contactCount++
-    }
+    setContactPoint(inc.p0)
+    setContactPoint(inc.p1)
   }
 }
 
 export namespace Collision {
-  export type LayerMap = Map<number, number>
-
   export interface Contact {
     point: Point
     depth: number
-  }
-
-  export interface Instance extends Shape.Contact {
-    colliderId: number
-  }
-
-  export class Ray {
-    intersects = false
-
-    constructor(
-      public readonly origin: Point,
-      public readonly target: Point,
-      public collisionMask: number,
-    ) {}
-
-    canCollide(layer: number) {
-      return (this.collisionMask & layer) != 0
-    }
-
-    transform(matrix: Matrix, out_ray?: Ray): Ray {
-      if (!out_ray) {
-        out_ray = new Ray(new Point(), new Point(), this.collisionMask)
-      } else {
-        out_ray.collisionMask = this.collisionMask
-      }
-      // TODO Figure out how to prevent rotation or to incorporate it correctly
-      // matrix.apply(this.origin, out_ray.origin)
-      // matrix.apply(this.target, out_ray.target)
-      this.origin.add({ x: matrix.tx, y: matrix.ty }, out_ray.origin)
-      this.target.add({ x: matrix.tx, y: matrix.ty }, out_ray.target)
-
-      return out_ray
-    }
-  }
-
-  export const ray = (
-    origin: Point,
-    directionNorm: VectorData,
-    distance: number,
-    collisionMask: number,
-  ): Ray => {
-    return new Ray(
-      new Point().copyFrom(origin),
-      new Point(origin.x + directionNorm.x * distance, origin.y + directionNorm.y * distance),
-      collisionMask,
-    )
-  }
-
-  export abstract class Shape {
-    layer: number
-    readonly contacts = new Map<number, Shape.Contact>()
-
-    abstract readonly _areaProperties: Geometry.AreaProperties
-    readonly _vertices: Point[]
-    readonly _transform: Transform
-    readonly _aabb: Geometry.AABB = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } }
-    private shouldUpdateVertices = true
-
-    protected constructor(
-      protected readonly _localVertices: Point[],
-      options?: Partial<Shape.Options>,
-    ) {
-      this._vertices = _localVertices.map((v) => v.clone())
-      this._transform = new Transform({
-        observer: {
-          _onUpdate: (_) => {
-            this.shouldUpdateVertices = true
-          },
-        },
-      })
-      this.layer = options?.layer ?? 0
-    }
-
-    get center(): Point {
-      return this._transform.position.add(this.centroid)
-    }
-    protected get centroid(): Point {
-      return this._areaProperties.centroid
-    }
-
-    updateVerticesIfNeeded() {
-      if (this.shouldUpdateVertices) {
-        this.updateVertices()
-      }
-      this.shouldUpdateVertices = false
-    }
-
-    canCollide(B: Shape, map?: Collision.LayerMap): boolean {
-      return (
-        !map ||
-        (((map.get(this.layer) ?? 0) & B.layer) | ((map.get(B.layer) ?? 0) & this.layer)) != 0
-      )
-    }
-
-    hasAABBIntersection(B: Shape): boolean {
-      this.updateVerticesIfNeeded()
-      B.updateVerticesIfNeeded()
-
-      return Geometry.isAABBIntersection(this._aabb, B._aabb)
-    }
-
-    findContact(B: Shape, includePoints: boolean = false): Shape.Contact | undefined {
-      this.updateVerticesIfNeeded()
-      B.updateVerticesIfNeeded()
-
-      if (!this.hasAABBIntersection(B)) {
-        return
-      }
-
-      let contact: Shape.Contact | undefined
-      if (B instanceof Shape.Circle) {
-        contact = this.findContactWithCircle(B, includePoints)
-      } else if (B instanceof Shape.Polygon) {
-        contact = this.findContactWithPolygon(B, includePoints)
-      }
-
-      return contact
-    }
-
-    evaluateRayIntersection(ray: Collision.Ray) {
-      ray.intersects = false
-
-      if ((this.layer & ray.collisionMask) == 0) {
-        return
-      }
-
-      this.updateVerticesIfNeeded()
-
-      const axis = new Vector()
-      ray.target.subtract(ray.origin, axis).normalize(axis)
-
-      ray.intersects = Geometry.hasProjectionOverlap(this.getProjectionRange(axis), {
-        min: axis.dot(ray.origin),
-        max: axis.dot(ray.target),
-      })
-
-      axis.orthogonalize(axis)
-
-      ray.intersects &&= Geometry.hasProjectionOverlap(
-        this.getProjectionRange(axis),
-        Range.point(axis.dot(ray.origin)),
-      )
-    }
-
-    abstract getProjectionRange(axis: Vector): Range
-
-    abstract findContactWithCircle(
-      B: Shape.Circle,
-      includePoints: boolean,
-    ): Shape.Contact | undefined
-    abstract findContactWithPolygon(
-      B: Shape.Polygon,
-      includePoints: boolean,
-    ): Shape.Contact | undefined
-
-    protected updateVertices() {
-      const matrix = this._transform.matrix
-      let minX = Infinity
-      let maxX = -Infinity
-      let minY = Infinity
-      let maxY = -Infinity
-
-      for (let i = 0; i < this._localVertices.length; i++) {
-        const v = this._vertices[i]!
-        matrix.apply(this._localVertices[i]!, v)
-
-        minX = Math.min(minX, v.x)
-        maxX = Math.max(maxX, v.x)
-        minY = Math.min(minY, v.y)
-        maxY = Math.max(maxY, v.y)
-      }
-      this._aabb.min.x = minX
-      this._aabb.min.y = minY
-      this._aabb.max.x = maxX
-      this._aabb.max.y = maxY
-    }
-
-    protected correctContactDirectionIfNeeded(B: Shape, out_contact: Shape.Contact) {
-      if (B.center.subtract(this.center).dot(out_contact.normal) < 0) {
-        out_contact.normal.multiplyScalar(-1, out_contact.normal)
-      }
-    }
-  }
-
-  export namespace Shape {
-    export interface Options {
-      layer: number
-      localOffset: PointData
-    }
-
-    export interface ContactPoint {
-      point: Point
-      depth: number
-    }
-
-    export interface Contact extends Geometry.ProjectionOverlap {
-      points?: ContactPoint[]
-    }
-
-    export class Circle extends Shape {
-      readonly _areaProperties: Geometry.AreaProperties
-
-      constructor(
-        private readonly _radius: number,
-        options?: Partial<Shape.Options>,
-      ) {
-        super([], options)
-
-        this._areaProperties = Geometry.Circle.areaProperties(_radius, 1, options?.localOffset)
-      }
-
-      get radius(): number {
-        return this._radius * this._transform.scale.x
-      }
-
-      getProjectionRange(axis: Vector): Range {
-        return Geometry.Circle.projectionRange(this.center, this.radius, axis)
-      }
-
-      findContactWithCircle(B: Circle, includePoints: boolean): Shape.Contact | undefined {
-        const radii = this.radius + B.radius
-        const diffPos = B.center.subtract(this.center)
-        const distSqrd = diffPos.magnitudeSquared()
-        if (distSqrd >= radii * radii) {
-          return
-        }
-        const dist = Math.sqrt(distSqrd)
-        const normal = diffPos.divideByScalar(dist)
-        const depth = radii - dist
-
-        const contact: Shape.Contact = { depth, normal }
-        if (includePoints) {
-          contact.points = [
-            {
-              point: this.center.add(normal.multiplyScalar(this.radius)),
-              depth,
-            },
-          ]
-        }
-        return contact
-      }
-
-      findContactWithPolygon(B: Polygon, includePoints: boolean): Shape.Contact | undefined {
-        const contact: Shape.Contact = { depth: Infinity, normal: new Vector() }
-        if (!this.evaluateContactWithPolygon(B, contact) || !B.evaluateContact(this, contact)) {
-          return
-        }
-
-        this.correctContactDirectionIfNeeded(B, contact)
-
-        if (includePoints) {
-          this.setContactPointsWithPolygon(B, contact)
-        }
-        return contact
-      }
-
-      protected updateVertices(): void {
-        this._aabb.min.x = this._transform.position.x - this.radius
-        this._aabb.min.y = this._transform.position.y - this.radius
-        this._aabb.max.x = this._transform.position.x + this.radius
-        this._aabb.max.y = this._transform.position.y + this.radius
-      }
-
-      protected evaluateContactWithPolygon(polygon: Polygon, out_contact: Shape.Contact): boolean {
-        const closestVerIdx = Geometry.Polygon.getClosestVertexIndexToPoint(
-          this.center,
-          polygon._vertices,
-        )
-        const closestVer = polygon._vertices[closestVerIdx]!
-        const axis = new Vector()
-        closestVer.subtract(this.center, axis).normalize(axis)
-
-        return Geometry.evaluateProjectionOverlap(
-          this.getProjectionRange(axis),
-          polygon.getProjectionRange(axis),
-          axis,
-          out_contact,
-        )
-      }
-
-      private setContactPointsWithPolygon(B: Polygon, out_contact: Shape.Contact) {
-        const edge = Geometry.Polygon.getEdgeAcrossNormal(
-          B._vertices,
-          out_contact.normal.multiplyScalar(-1),
-        )
-        out_contact.points = [
-          {
-            point: edge.getClosestPoint(this.center),
-            depth: out_contact.depth,
-          },
-        ]
-      }
-    }
-
-    export class Polygon extends Shape {
-      readonly _areaProperties: Geometry.AreaProperties
-
-      constructor(vertices: Point[], options?: Partial<Shape.Options>) {
-        super(vertices, options)
-
-        this._areaProperties = Geometry.Polygon.areaProperties(vertices)
-      }
-
-      getAxis(index: number, ref_axis: Vector) {
-        this._vertices[(index + 1) % this._vertices.length]!.subtract(
-          this._vertices[index]!,
-          ref_axis,
-        )
-          .orthogonalize(ref_axis)
-          .normalize(ref_axis)
-      }
-
-      getProjectionRange(axis: VectorData): Range {
-        return Geometry.Polygon.projectionRange(this._vertices, axis)
-      }
-
-      findContactWithCircle(B: Circle, includePoints: boolean): Shape.Contact | undefined {
-        const contact = B.findContactWithPolygon(this, includePoints)
-        contact?.normal.multiplyScalar(-1, contact.normal)
-
-        return contact
-      }
-
-      findContactWithPolygon(B: Polygon, includePoints: boolean): Shape.Contact | undefined {
-        const contact: Shape.Contact = { depth: Infinity, normal: new Vector() }
-        if (!this.evaluateContact(B, contact) || !B.evaluateContact(this, contact)) {
-          return
-        }
-
-        this.correctContactDirectionIfNeeded(B, contact)
-
-        if (includePoints) {
-          this.setContactPointsWithPolygon(B, contact)
-        }
-        return contact
-      }
-
-      evaluateContact(B: Shape, out_contact: Shape.Contact): boolean {
-        const axis = new Vector()
-
-        for (let i = 0; i < this._vertices.length; i++) {
-          this.getAxis(i, axis)
-
-          if (
-            !Geometry.evaluateProjectionOverlap(
-              this.getProjectionRange(axis),
-              B.getProjectionRange(axis),
-              axis,
-              out_contact,
-            )
-          ) {
-            return false
-          }
-        }
-        return true
-      }
-
-      private setContactPointsWithPolygon(B: Polygon, out_contact: Shape.Contact) {
-        const edgeA = Geometry.Polygon.getEdgeAcrossNormal(this._vertices, out_contact.normal)
-        const edgeB = Geometry.Polygon.getEdgeAcrossNormal(
-          B._vertices,
-          out_contact.normal.multiplyScalar(-1),
-        )
-        const contactN = out_contact.normal
-        // Reference and incident edges; ref. is the most perpendicular to the contact's Normal,
-        // and thus used to clip the incident's edge vertices to get the contact points
-        // Source: https://dyn4j.org/2011/11/contact-points-using-clipping/
-        let refEdge: Geometry.Segment, incEdge: Geometry.Segment
-        if (Math.abs(edgeA.vector.dot(contactN)) < Math.abs(edgeB.vector.dot(contactN))) {
-          refEdge = edgeA
-          incEdge = edgeB
-        } else {
-          refEdge = edgeB
-          incEdge = edgeA
-        }
-        // Normalize refEdge to use as axis
-        const axis = refEdge.vector.normalize()
-        incEdge.projectAndClipByMargin(axis, axis.dot(refEdge.a))
-
-        axis.multiplyScalar(-1, axis)
-        incEdge.projectAndClipByMargin(axis, axis.dot(refEdge.b))
-
-        const cps: Shape.ContactPoint[] = []
-        const refN = refEdge.vector.normalize().orthogonalize()
-        const aRefProj = refN.dot(refEdge.a)
-        let depth = aRefProj - refN.dot(incEdge.a)
-        if (depth >= 0) {
-          cps.push({ point: incEdge.a, depth: depth })
-        }
-        depth = aRefProj - refN.dot(incEdge.b)
-        if (depth >= 0) {
-          cps.push({ point: incEdge.b, depth: depth })
-        }
-
-        out_contact.points = cps
-        out_contact.depth = EMath.average(...cps.map((cp) => cp.depth))
-      }
-    }
   }
 }

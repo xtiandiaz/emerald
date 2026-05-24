@@ -105,7 +105,11 @@ export class World extends Container {
       console.error('Undefined entity', entityId)
       return
     }
-    e.components.set(component.constructor.name, component)
+    const key = component.constructor.name
+    if (e.components.has(key)) {
+      this.removeComponent(key, entityId)
+    }
+    e.components.set(key, component)
     if (component instanceof Container) {
       this.addChild(component)
     }

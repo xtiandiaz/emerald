@@ -1,10 +1,8 @@
 import { Point, Transform } from 'pixi.js'
-import { Collision, CollisionMap } from '../collision'
-import { Shape, ShapeOverlap, Circle, Rectangle, ConvexPolygon } from '../geometry'
+import { Shape, Circle, Rectangle, ConvexPolygon } from '../geometry'
+import { ShapeOverlap, CollisionMap } from '../collision'
 
 export class Collider {
-  readonly collisions = new Map<number, Collision.Instance>()
-
   constructor(
     public _shape: Shape,
     public layer = 1,
@@ -31,13 +29,6 @@ export class Collider {
 }
 
 export namespace Collider {
-  export interface Options {
-    shape: Collision.Shape
-    layer: number
-  }
-
-  export type Contact = Collision.Shape.Contact
-
   export const circle = (radius: number, layer?: number) => {
     return new Collider(new Circle(radius), layer)
   }

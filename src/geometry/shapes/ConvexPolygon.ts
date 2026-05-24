@@ -1,23 +1,36 @@
 import { Point, PointData } from 'pixi.js'
-import { getClosestPoint, ProjectionRange, Segment, Shape } from '..'
+import {
+  getClosestPointIndex,
+  hasProjectionOverlap,
+  overlapDepth,
+  ProjectionOverlap,
+  ProjectionRange,
+  Shape,
+  Segment,
+} from '..'
 import { EMath } from '../../extras'
 import { VectorData } from '../../types'
 
 export class ConvexPolygon extends Shape {
   readonly _vertices: Point[]
   readonly _localVertices: PointData[]
-  readonly localCenter: Point // -> Centroid
 
   private readonly props = {
-    sides: [new Segment(), new Segment()],
+    point: new Point(),
+    projRanges: [
+      { min: 0, max: 0 },
+      { min: 0, max: 0 },
+    ] as [ProjectionRange, ProjectionRange],
+    segments: [new Segment(), new Segment()],
   }
 
-  constructor(vertices: PointData[]) {
-    super()
+  constructor(
+    vertices: PointData[], // in clock-wise order
+  ) {
+    super(ConvexPolygon.calculateCentroid(vertices))
 
     this._localVertices = vertices.map((v) => ({ x: v.x, y: v.y }))
     this._vertices = vertices.map((v) => new Point(v.x, v.y))
-    this.localCenter = ConvexPolygon.calculateCentroid(vertices)
   }
 
   static from(radius: number, sides: number): ConvexPolygon {
@@ -33,44 +46,79 @@ export class ConvexPolygon extends Shape {
     return new this(vertices)
   }
 
-  getProjectionRange(axis: VectorData): ProjectionRange {
-    const range: ProjectionRange = { min: Infinity, max: -Infinity }
+  getProjectionRange(axis: VectorData, out_projRange?: ProjectionRange): ProjectionRange {
+    if (out_projRange) {
+      out_projRange.min = Infinity
+      out_projRange.max = -Infinity
+    } else {
+      out_projRange = { min: Infinity, max: -Infinity }
+    }
     let proj: number
-
     for (let i = 0; i < this._vertices.length; i++) {
       proj = this._vertices[i]!.dot(axis)
-      range.min = Math.min(range.min, proj)
-      range.max = Math.max(range.max, proj)
+      out_projRange.min = Math.min(out_projRange.min, proj)
+      out_projRange.max = Math.max(out_projRange.max, proj)
     }
-    return range
+    return out_projRange
   }
 
-  getClosestVertex(from: PointData): [index: number, point: PointData] {
-    return getClosestPoint(this._vertices, from)!
+  getClosestVertexIndex(from: PointData): number {
+    return getClosestPointIndex(this._vertices, from)
   }
 
-  _getSideAcross(axis: VectorData): Segment {
+  getSideAcross(axis: VectorData, out_segment?: Segment): Segment {
     const vi = this.getVertexIndexWithMaxProjection(axis)
     const v = this._vertices[vi]!
     const prev_v = this._vertices[(vi == 0 ? this._vertices.length : vi) - 1]!
     const next_v = this._vertices[(vi + 1) % this._vertices.length]!
-    return Segment.getMostPerpendicular(
-      this.props.sides[0].reset(prev_v, v),
-      this.props.sides[1].reset(v, next_v),
-      axis,
-    )
+    // Maintain clock-wise order for the vertices used in the Segments:
+    this.props.segments[0].reset(prev_v, v)
+    this.props.segments[1].reset(v, next_v)
+    out_segment ??= new Segment()
+    const mp = Segment.getMostPerpendicular(this.props.segments[0], this.props.segments[1], axis)
+    out_segment.copyFrom(mp)
+    return out_segment
+  }
+
+  hasProjectionOverlap(
+    other: Shape,
+    out_overlap?: ProjectionOverlap,
+  ): ProjectionOverlap | undefined {
+    let depth: number,
+      v0: Point,
+      v1: Point,
+      axis = this.props.point
+    const pra = this.props.projRanges[0],
+      prb = this.props.projRanges[1]
+
+    out_overlap ??= { depth: Infinity, axis: new Point() }
+    for (let i = 0; i < this._vertices.length; i++) {
+      v0 = this._vertices[i]!
+      v1 = this._vertices[(i + 1) % this._vertices.length]!
+      v1.subtract(v0, axis).orthogonalize(axis).normalize(axis)
+      this.getProjectionRange(axis, pra)
+      other.getProjectionRange(axis, prb)
+      if (!hasProjectionOverlap(pra, prb)) {
+        return
+      }
+      depth = overlapDepth(pra, prb)
+      if (depth < out_overlap.depth) {
+        out_overlap.depth = depth
+        out_overlap.axis.copyFrom(axis)
+      }
+    }
+    return out_overlap
   }
 
   protected updateVertices(): void {
     super.updateVertices()
-
-    let v: Point
 
     this._bb.min.x = Infinity
     this._bb.max.x = -Infinity
     this._bb.min.y = Infinity
     this._bb.max.y = -Infinity
 
+    let v: Point
     for (let i = 0; i < this._localVertices.length; i++) {
       v = this._vertices[i]!
       this._transform.matrix.apply(this._localVertices[i]!, v)
@@ -85,7 +133,6 @@ export class ConvexPolygon extends Shape {
   private getVertexIndexWithMaxProjection(axis: VectorData): number {
     let maxProjection = -Infinity
     let index = -1
-
     for (let i = 0; i < this._vertices.length; i++) {
       const proj = this._vertices[i]!.dot(axis)
       if (proj > maxProjection) {

@@ -1,25 +1,27 @@
 import type { Point } from 'pixi.js'
-import { Gravity, Physics } from '.'
 import { Vector, type VectorData } from '..'
-import { RigidBody, Collider } from '../components'
+import { Gravity, Physics } from '.'
+import { RigidBody } from '../components'
+import { Collision } from '../collision'
 import { EMath } from '../extras'
 
 export class PhysicsEngine {
   // Relative velocities per contact-point
   private vrs = [new Vector(), new Vector()]
   // Rotation radii and their orthogonals per contact-point
-  private ras = [new Vector(), new Vector()]
-  private ra_orths = [new Vector(), new Vector()]
-  private rbs = [new Vector(), new Vector()]
-  private rb_orths = [new Vector(), new Vector()]
+  private rras = [new Vector(), new Vector()]
+  private rra_orths = [new Vector(), new Vector()]
+  private rrbs = [new Vector(), new Vector()]
+  private rrb_orths = [new Vector(), new Vector()]
   // Reaction impulses and magnitudes per contact-point
   private Jrs = [new Vector(), new Vector()]
   // Frictional impulses and magnitudes per contact-point
   private Jfs = [new Vector(), new Vector()]
   // Tangent
   private tan = new Vector()
+  private zeroVector = new Vector()
 
-  stepBody(body: RigidBody, gravity: Gravity, pixelsPerMeter: number, dt: number) {
+  stepBody(body: RigidBody, gravity: Gravity, ppm: number, dt: number) {
     switch (body.type) {
       case 'static':
         return
@@ -38,9 +40,9 @@ export class PhysicsEngine {
         break
     }
 
-    body.position.x += body.velocity.x * dt * pixelsPerMeter
-    body.position.y += body.velocity.y * dt * pixelsPerMeter
-    body.rotation += body.angularVelocity * dt * pixelsPerMeter
+    body.position.x += body.velocity.x * dt * ppm
+    body.position.y += body.velocity.y * dt * ppm
+    body.rotation += body.angularVelocity * dt * ppm
   }
 
   separateBodies(a: RigidBody, b: RigidBody, depth: VectorData) {
@@ -50,7 +52,7 @@ export class PhysicsEngine {
     if (a.type === 'static') {
       b.position.add(depth, b.position)
     } else if (b.type === 'static') {
-      a.position.add(depth, a.position)
+      a.position.subtract(depth, a.position)
     } else {
       depth.x /= 2
       depth.y /= 2
@@ -60,62 +62,53 @@ export class PhysicsEngine {
   }
 
   /*  
-    Collision response based on the 'reaction model',
+    Collision response based on the 'Reaction Model',
     https://en.wikipedia.org/wiki/Collision_response#Impulse-based_reaction_model
   */
-  resolveCollision(a: RigidBody, b: RigidBody, contact: Collider.Contact) {
-    const zeroVector = new Vector()
-
+  resolveCollision(a: RigidBody, b: RigidBody, c: Collision) {
     const coeffs = PhysicsEngine.getResolutionCoefficients(a, b)
     const sumInvMasses = a.invMass + b.invMass
-    const normal = contact.normal
+    const normal = c._normal
 
-    this.clearImpulses()
+    this.separateBodies(a, b, normal.multiplyByScalar(c._depth))
 
-    this.separateBodies(a, b, contact.normal.multiplyByScalar(contact.depth))
-
-    if (!contact.points) {
+    if (c._contactCount <= 0) {
       return
     }
-
-    const pointCount = contact.points.length
-    const totalDepth = contact.points.reduce((acc, p) => (acc += p.depth), 0)
+    const totalDepth = c.totalContactsDepth
     const jrs = [0, 0] // Impulse magnitudes (per point)
-    let denom: number
+    let i: number, denom: number
 
-    for (let i = 0; i < pointCount; i++) {
-      const cp = contact.points[i]!
+    this.clearImpulses()
+    for (i = 0; i < c._contactCount; i++) {
+      const cp = c._contacts[i]!
       this.resetRotationRadii(a, b, cp.point, i)
-
       this.resetRelativeVelocity(a, b, i)
-      const vrDotN = this.vrs[i]!.dot(normal)
-      if (vrDotN > 0) {
+      const n_dot_vr = normal.dot(this.vrs[i]!)
+      if (n_dot_vr > 0) {
         return
       }
       // Reaction impulse magnitude (jr)
-      jrs[i] = -(1 + coeffs.restitution) * vrDotN
+      jrs[i] = -(1 + coeffs.restitution) * n_dot_vr
       denom =
         (sumInvMasses +
-          Math.pow(this.ras[i]!.cross(normal), 2) * a.invInertia +
-          Math.pow(this.rbs[i]!.cross(normal), 2) * b.invInertia) /
-        pointCount
+          Math.pow(this.rras[i]!.cross(normal), 2) * a.invMoi +
+          Math.pow(this.rrbs[i]!.cross(normal), 2) * b.invMoi) /
+        c._contactCount
 
       // Reaction impulse
       const Jr = this.Jrs[i]!
       const weight = cp.depth / totalDepth
       Jr.add(normal.multiplyByScalar((weight * jrs[i]!) / denom), Jr)
     }
-
-    for (let i = 0; i < pointCount; i++) {
-      const cp = contact.points[i]!
+    for (i = 0; i < c._contactCount; i++) {
+      const cp = c._contacts[i]
       this.resetRotationRadii(a, b, cp.point, i)
-
       this.resetRelativeVelocity(a, b, i)
       const vr = this.vrs[i]!
-
       // Tangent
       vr.subtract(normal.multiplyByScalar(vr.dot(normal)), this.tan)
-      if (this.tan.isNearlyEqualTo(zeroVector, Physics.NEARLY_ZERO_MAGNITUDE)) {
+      if (this.tan.isNearlyEqualTo(this.zeroVector, Physics.NEARLY_ZERO_MAGNITUDE)) {
         continue
       } else {
         this.tan.normalize(this.tan)
@@ -129,35 +122,34 @@ export class PhysicsEngine {
       const jf = vr_dot_tan == 0 || vr_dot_tan <= js ? -vr_dot_tan : -jd
       denom =
         (sumInvMasses +
-          Math.pow(this.ra_orths[i]!.dot(this.tan), 2) * a.invInertia +
-          Math.pow(this.rb_orths[i]!.dot(this.tan), 2) * b.invInertia) /
-        pointCount
+          Math.pow(this.rra_orths[i]!.dot(this.tan), 2) * a.invMoi +
+          Math.pow(this.rrb_orths[i]!.dot(this.tan), 2) * b.invMoi) /
+        c._contactCount
 
       // Frictional impulse
       const Jf = this.Jfs[i]!
       const weight = cp.depth / totalDepth
       Jf.add(this.tan.multiplyByScalar((weight * jf) / denom), Jf)
     }
-
-    this.applyImpulses(a, this.ras, pointCount, -1)
-    this.applyImpulses(b, this.rbs, pointCount, 1)
+    this.applyImpulses(a, this.rras, c._contactCount, -1)
+    this.applyImpulses(b, this.rrbs, c._contactCount, 1)
   }
 
   private resetRotationRadii(a: RigidBody, b: RigidBody, point: Point, index: number) {
-    const ra = this.ras[index]!
-    const rb = this.rbs[index]!
+    const ra = this.rras[index]!
+    const rb = this.rrbs[index]!
     point.subtract(a.position, ra)
     point.subtract(b.position, rb)
-    ra.orthogonalize(this.ra_orths[index]!)
-    rb.orthogonalize(this.rb_orths[index]!)
+    ra.orthogonalize(this.rra_orths[index]!)
+    rb.orthogonalize(this.rrb_orths[index]!)
   }
 
   private resetRelativeVelocity(a: RigidBody, b: RigidBody, index: number) {
     const vr = this.vrs[index]
     b.velocity
-      .add(this.rb_orths[index]!.multiplyByScalar(b.angularVelocity), vr)
+      .add(this.rrb_orths[index]!.multiplyByScalar(b.angularVelocity), vr)
       .subtract(a.velocity, vr)
-      .subtract(this.ra_orths[index]!.multiplyByScalar(a.angularVelocity), vr)
+      .subtract(this.rra_orths[index]!.multiplyByScalar(a.angularVelocity), vr)
   }
 
   private clearImpulses() {
@@ -175,7 +167,7 @@ export class PhysicsEngine {
       const r = rs[i]!
       body.velocity.x += sign * (Jr.x + Jf.x) * body.invMass
       body.velocity.y += sign * (Jr.y + Jf.y) * body.invMass
-      body.angularVelocity += sign * (r.cross(Jr) + r.cross(Jf)) * body.invInertia
+      body.angularVelocity += sign * (r.cross(Jr) + r.cross(Jf)) * body.invMoi
     }
   }
 }

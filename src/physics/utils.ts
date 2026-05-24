@@ -1,25 +1,27 @@
 import { Point } from 'pixi.js'
 import { Circle, ConvexPolygon, Shape } from '../geometry'
-import { PhysicalShapeProperties } from './types'
+import { ShapeProperties } from './types'
 import { EMath } from '../extras'
 
-export function calculatePhysicalShapeProperties(
+export function calculateShapeProperties(
   shape: Shape,
-  density = 1,
-): PhysicalShapeProperties {
+  density: number,
+  ppm: number, // pixels per meter
+): ShapeProperties {
   let mass: number, momentOfInertia: number
 
   // "Second moment of area"s ("moment of inertia"s) formulae borrowed from
   // https://en.wikipedia.org/wiki/List_of_second_moments_of_area
   if (shape instanceof Circle) {
-    momentOfInertia = (Math.PI * Math.pow(shape.radius, 4)) / 2
+    const r = shape.radius / ppm
+    momentOfInertia = (Math.PI * Math.pow(r, 4)) / 2
     // Mass in terms of the shape's area and (its optional, uniform) density
     // https://en.wikipedia.org/wiki/Area_density; m = A * 𝑝
-    mass = Math.PI * Math.pow(shape.radius, 2) * density
+    mass = Math.PI * Math.pow(r, 2) * density
   } else if (shape instanceof ConvexPolygon) {
     // For "Any Polygon" most explicitly described here
     // https://en.wikipedia.org/wiki/Second_moment_of_area
-    const centroid = shape.localCenter
+    const centroid = shape._localCenter
     const vertices = shape._localVertices
     const v0 = new Point(),
       v1 = new Point()

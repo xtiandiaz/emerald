@@ -3,21 +3,27 @@ import { Shape, ProjectionRange } from '..'
 import { VectorData } from '../..'
 
 export class Circle extends Shape {
-  readonly localCenter = new Point()
-
   constructor(private readonly _radius: number) {
-    super()
+    super(new Point())
   }
 
   get radius(): number {
     return this._radius * this._transform.scale.x
   }
 
-  getProjectionRange(axis: VectorData): ProjectionRange {
-    const dot = axis.x * this.center.x + axis.y * this.center.y
-    const projs: [number, number] = [dot - this.radius, dot + this.radius]
-
-    return projs[0] < projs[1] ? { min: projs[0], max: projs[1] } : { min: projs[1], max: projs[0] }
+  getProjectionRange(axis: VectorData, out_projRange?: ProjectionRange): ProjectionRange {
+    if (out_projRange) {
+      out_projRange.min = Infinity
+      out_projRange.max = -Infinity
+    } else {
+      out_projRange = { min: Infinity, max: -Infinity }
+    }
+    const dot = axis.x * this._center.x + axis.y * this._center.y
+    const proj0 = dot - this.radius
+    const proj1 = dot + this.radius
+    out_projRange.min = Math.min(proj0, proj1)
+    out_projRange.max = Math.max(proj0, proj1)
+    return out_projRange
   }
 
   protected updateVertices(): void {

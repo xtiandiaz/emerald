@@ -2,7 +2,7 @@ import { Vector } from '../types'
 
 export type Gravity = Vector
 
-export interface PhysicalShapeProperties {
+export interface ShapeProperties {
   mass: number
   // "Second polar moment of area", coloquially known as "moment of inertia" and
   // suitable for this purpose:

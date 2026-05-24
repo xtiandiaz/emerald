@@ -1,3 +1,3 @@
 export * from './types'
+export * from './ShapeOverlap'
 export * from './Collision'
-export * from './RayCaster'

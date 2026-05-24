@@ -3,16 +3,16 @@ import { BoundingBox, isAABB, ProjectionRange } from '.'
 import { VectorData } from '..'
 
 export abstract class Shape {
-  readonly center = new Point()
+  readonly _center = new Point()
   readonly _transform = new Transform({
     observer: { _onUpdate: () => (this.shouldUpdateVertices = true) },
   })
 
-  abstract readonly localCenter: Point
-
   protected readonly _bb: BoundingBox = { min: { x: 0, y: 0 }, max: { x: 0, y: 0 } }
 
   private shouldUpdateVertices = true
+
+  constructor(readonly _localCenter: Point) {}
 
   hasAABB(other: Shape): boolean {
     this.updateVerticesIfNeeded()
@@ -21,10 +21,10 @@ export abstract class Shape {
     return isAABB(this._bb, other._bb)
   }
 
-  abstract getProjectionRange(axis: VectorData): ProjectionRange
+  abstract getProjectionRange(axis: VectorData, out_projRange?: ProjectionRange): ProjectionRange
 
   protected updateVertices(): void {
-    this._transform.position.add(this.localCenter, this.center)
+    this._transform.position.add(this._localCenter, this._center)
   }
 
   protected updateVerticesIfNeeded() {

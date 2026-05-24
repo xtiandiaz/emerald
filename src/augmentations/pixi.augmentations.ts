@@ -36,6 +36,7 @@ Point.prototype.magnitudeSquared = ObservablePoint.prototype.magnitudeSquared = 
 ): number {
   return this.x * this.x + this.y * this.y
 }
+
 Point.prototype.magnitude = ObservablePoint.prototype.magnitude = function (this): number {
   return Math.sqrt(this.magnitudeSquared())
 }
@@ -55,9 +56,9 @@ Point.prototype.add = ObservablePoint.prototype.add = function <T extends PointD
   out_point ??= new Point() as PointData as T
   out_point.x = this.x + other.x
   out_point.y = this.y + other.y
-
   return out_point
 }
+
 Point.prototype.addScalar = ObservablePoint.prototype.addScalar = function <T extends PointData>(
   this,
   scalar: number,
@@ -65,6 +66,7 @@ Point.prototype.addScalar = ObservablePoint.prototype.addScalar = function <T ex
 ): T {
   return this.addScalars(scalar, scalar, out_point)
 }
+
 Point.prototype.addScalars = ObservablePoint.prototype.addScalars = function <T extends PointData>(
   this,
   x: number,
@@ -74,9 +76,9 @@ Point.prototype.addScalars = ObservablePoint.prototype.addScalars = function <T 
   out_point ??= new Point() as PointData as T
   out_point.x = this.x + x
   out_point.y = this.y + y
-
   return out_point
 }
+
 Point.prototype.subtract = ObservablePoint.prototype.subtract = function <T extends PointData>(
   this,
   other: PointData,
@@ -85,23 +87,24 @@ Point.prototype.subtract = ObservablePoint.prototype.subtract = function <T exte
   out_point ??= new Point() as PointData as T
   out_point.x = this.x - other.x
   out_point.y = this.y - other.y
-
   return out_point
 }
+
 Point.prototype.subtractScalar = ObservablePoint.prototype.subtractScalar = function <
   T extends PointData,
 >(this, scalar: number, out_point?: T): T {
   return this.subtractScalars(scalar, scalar, out_point)
 }
+
 Point.prototype.subtractScalars = ObservablePoint.prototype.subtractScalars = function <
   T extends PointData,
 >(this, x: number, y: number, out_point?: T): T {
   out_point ??= new Point() as PointData as T
   out_point.x = this.x - x
   out_point.y = this.y - y
-
   return out_point
 }
+
 Point.prototype.multiplyBy = ObservablePoint.prototype.multiplyBy = function <T extends PointData>(
   this,
   other: PointData,
@@ -110,18 +113,18 @@ Point.prototype.multiplyBy = ObservablePoint.prototype.multiplyBy = function <T 
   out_point ??= new Point() as PointData as T
   out_point.x = this.x * other.x
   out_point.y = this.y * other.y
-
   return out_point
 }
+
 Point.prototype.multiplyByScalar = ObservablePoint.prototype.multiplyByScalar = function <
   T extends PointData,
 >(this, scalar: number, out_point?: T): T {
   out_point ??= new Point() as PointData as T
   out_point.x = this.x * scalar
   out_point.y = this.y * scalar
-
   return out_point
 }
+
 Point.prototype.divideBy = ObservablePoint.prototype.divideBy = function <T extends PointData>(
   this,
   other: PointData,
@@ -130,22 +133,22 @@ Point.prototype.divideBy = ObservablePoint.prototype.divideBy = function <T exte
   out_point ??= new Point() as PointData as T
   out_point.x = this.x / other.x
   out_point.y = this.y / other.y
-
   return out_point
 }
+
 Point.prototype.divideByScalar = ObservablePoint.prototype.divideByScalar = function <
   T extends PointData,
 >(this, scalar: number, out_point?: T): T {
   out_point ??= new Point() as PointData as T
   out_point.x = this.x / scalar
   out_point.y = this.y / scalar
-
   return out_point
 }
 
 Point.prototype.dot = ObservablePoint.prototype.dot = function (this, other: PointData): number {
   return this.x * other.x + this.y * other.y
 }
+
 Point.prototype.cross = ObservablePoint.prototype.cross = function (
   this,
   other: PointData,
@@ -162,18 +165,18 @@ Point.prototype.clamp = ObservablePoint.prototype.clamp = function <T extends Po
   out_point ??= new Point() as PointData as T
   out_point.x = EMath.clamp(this.x, min.x, max.x)
   out_point.y = EMath.clamp(this.y, min.y, max.y)
-
   return out_point
 }
+
 Point.prototype.clampByScalar = ObservablePoint.prototype.clampByScalar = function <
   T extends PointData = Point,
 >(this, min: number, max: number, out_point?: T): T {
   out_point ??= new Point() as PointData as T
   out_point.x = EMath.clamp(this.x, min, max)
   out_point.y = EMath.clamp(this.y, min, max)
-
   return out_point
 }
+
 Point.prototype.clampByMagnitude = function <T extends PointData = Point>(
   this,
   maxMagnitude: number,
@@ -182,7 +185,6 @@ Point.prototype.clampByMagnitude = function <T extends PointData = Point>(
   out_vector ??= new Point() as PointData as T
   const magnitude = this.magnitude()
   this.multiplyScalar(Math.min(magnitude, maxMagnitude) / magnitude, out_vector)
-
   return out_vector
 }
 
@@ -192,16 +194,15 @@ Point.prototype.normalize = ObservablePoint.prototype.normalize = function <T ex
 ): T {
   out_vector ??= new Point() as PointData as T
   const mag = this.magnitude()
-  out_vector.x /= mag
-  out_vector.y /= mag
-
+  out_vector.x = this.x / mag
+  out_vector.y = this.y / mag
   return out_vector
 }
+
 Point.prototype.orthogonalize = function <T extends PointData>(this, out_vector?: T): T {
   out_vector ??= new Point() as PointData as T
   const x = this.x
   out_vector.x = -this.y
   out_vector.y = x
-
   return out_vector
 }

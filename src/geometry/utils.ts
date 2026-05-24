@@ -16,10 +16,7 @@ export const overlapDepth = (a: ProjectionRange, b: ProjectionRange): number => 
   return Math.min(a.max - b.min, b.max - a.min)
 }
 
-export function getClosestPoint(
-  at: PointData[],
-  from: PointData,
-): [index: number, point: PointData] | undefined {
+export function getClosestPointIndex(at: PointData[], from: PointData): number {
   let dx: number,
     dy: number,
     distSq: number,
@@ -35,5 +32,5 @@ export function getClosestPoint(
       index = i
     }
   }
-  return index >= 0 ? [index, at[index]] : undefined
+  return index
 }

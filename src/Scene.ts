@@ -1,4 +1,4 @@
-import { Container, Rectangle, Renderer, Sprite, Transform } from 'pixi.js'
+import { Container, Renderer, Sprite, Transform } from 'pixi.js'
 import { World, System, Screen, SignalMap, Signaler, Disconnectable, Component } from '.'
 import { Collider, RigidBody } from './components'
 import { Debug } from './debug'
@@ -10,7 +10,7 @@ export abstract class Scene<S extends SignalMap> extends World {
 
   private inputPad = new Sprite()
   private options!: Scene.Options
-  private physicsSystem?: PhysicsSystem<S>
+  private physicsOptions!: PhysicsSystem.Options
   private debugDisplay?: Debug.Display
 
   constructor(
@@ -30,10 +30,9 @@ export abstract class Scene<S extends SignalMap> extends World {
   async init?(): Promise<void>
   async _init(options?: Partial<Scene.Options>): Promise<void> {
     this.options = { ...options }
+    this.physicsOptions = { ...options?.physics, ...PhysicsSystem.defaultOptions() }
 
     await this.init?.()
-
-    // this.initDebugIfNeeded(signals)
 
     this.systems.forEach((s) => s.init() ?? [])
   }
@@ -43,7 +42,6 @@ export abstract class Scene<S extends SignalMap> extends World {
     await this.deinit?.()
 
     this.systems.forEach((s) => s.deinit?.())
-
     this.connections.forEach((c) => c.disconnect())
 
     this.renderer.removeListener('resize', this.onResized)
@@ -73,9 +71,7 @@ export abstract class Scene<S extends SignalMap> extends World {
         }
       } else {
         t = e.components.get(Transform.name) as Transform
-        if (!t) {
-          continue
-        }
+        if (!t) continue
         for (const c of e.components.values()) {
           if (c instanceof Container) {
             c.setFromMatrix(t.matrix)
@@ -107,8 +103,17 @@ export abstract class Scene<S extends SignalMap> extends World {
 
   addComponent<T extends Component>(component: T, entityId: number): T | undefined {
     const c = super.addComponent(component, entityId)
-    if (c instanceof RigidBody && !this.physicsSystem) {
-      this.createSystem(PhysicsSystem)
+    if (c instanceof RigidBody) {
+      const col = this.getComponent(Collider, entityId)
+      if (col) c.resetShapeProperties(col, this.physicsOptions.pixelsPerMeter)
+
+      if (!this.systems.has(PhysicsSystem.name)) {
+        const ps = this.createSystem(PhysicsSystem)
+        ps._init(this.physicsOptions)
+      }
+    } else if (c instanceof Collider) {
+      const rb = this.getComponent(RigidBody, entityId)
+      if (rb) rb.resetShapeProperties(c, this.physicsOptions.pixelsPerMeter)
     }
     return c
   }
@@ -156,6 +161,6 @@ export namespace Scene {
   export interface Options {
     // bounds: Rectangle
     // debug: Debug.Options.Scene
-    physics?: PhysicsSystem.Options
+    physics?: Partial<PhysicsSystem.Options>
   }
 }
