@@ -1,17 +1,16 @@
-import { Container, Renderer, Sprite, Transform } from 'pixi.js'
-import { World, System, Screen, SignalMap, Signaler, Disconnectable, Component } from '.'
-import { Collider, RigidBody } from './components'
-import { Debug } from './debug'
-import { PhysicsSystem } from './systems'
+import { Container, Rectangle, Renderer, Sprite, Transform } from 'pixi.js'
+import { World, System, Screen, SignalMap, Signaler, Disconnectable, Component, View } from '.'
+import { Camera, Collider, RigidBody } from './components'
+import { CameraSystem, PhysicsSystem } from './systems'
 
-export abstract class Scene<S extends SignalMap> extends World {
+export abstract class Scene<S extends SignalMap> extends World implements View {
   protected readonly systems = new Map<string, System<S>>()
   protected readonly connections = Array<Disconnectable>()
 
   private inputPad = new Sprite()
-  private options!: Scene.Options
   private physicsOptions!: PhysicsSystem.Options
-  private debugDisplay?: Debug.Display
+  private currentCameraId?: number
+  private _camera?: View.CameraEntity
 
   constructor(
     protected renderer: Renderer,
@@ -19,17 +18,32 @@ export abstract class Scene<S extends SignalMap> extends World {
   ) {
     super()
 
-    // this.boundsArea = options?.bounds ?? new Rectangle(0, 0, Screen.width, Screen.height)
-
-    // this.getLayer(Stage.Layer.UI).attach(this.inputPad)
     this.addChild(this.inputPad)
 
     this.renderer.addListener('resize', this.onResized)
   }
 
+  get viewport(): Rectangle {
+    return this.renderer.screen
+  }
+
+  get camera(): View.CameraEntity | undefined {
+    return this._camera
+  }
+
+  setCamera(entityId: number): Camera | undefined {
+    if (!this.hasComponent(Camera, entityId)) {
+      console.warn(`Undefined Camera at entity ${entityId}`)
+      return
+    }
+    const c = this.getComponent(Camera, entityId)!
+    this._camera = [c, entityId]
+    return c
+  }
+
   async init?(): Promise<void>
   async _init(options?: Partial<Scene.Options>): Promise<void> {
-    this.options = { ...options }
+    // this.options = { ...options }
     this.physicsOptions = { ...options?.physics, ...PhysicsSystem.defaultOptions() }
 
     await this.init?.()
@@ -45,8 +59,6 @@ export abstract class Scene<S extends SignalMap> extends World {
     this.connections.forEach((c) => c.disconnect())
 
     this.renderer.removeListener('resize', this.onResized)
-
-    // this.debugDisplay?.deinit()
 
     this.destroy()
   }
@@ -96,6 +108,8 @@ export abstract class Scene<S extends SignalMap> extends World {
     const tag = this.getTag(id)
     const wasRemoved = super.removeEntity(id)
     if (wasRemoved) {
+      if (this.currentCameraId === id) this.currentCameraId = undefined
+
       this.signaler?.emit('entity-removed', { id, tag })
     }
     return wasRemoved
@@ -107,20 +121,21 @@ export abstract class Scene<S extends SignalMap> extends World {
       const col = this.getComponent(Collider, entityId)
       if (col) c.resetShapeProperties(col, this.physicsOptions.pixelsPerMeter)
 
-      if (!this.systems.has(PhysicsSystem.name)) {
-        const ps = this.createSystem(PhysicsSystem)
+      this.addSystemIfNeeded(PhysicsSystem, (ps) => {
         ps._init(this.physicsOptions)
-      }
+      })
     } else if (c instanceof Collider) {
       const rb = this.getComponent(RigidBody, entityId)
       if (rb) rb.resetShapeProperties(c, this.physicsOptions.pixelsPerMeter)
+    } else if (c instanceof Camera) {
+      this.addSystemIfNeeded(CameraSystem)
     }
     return c
   }
 
   createSystem<T extends System<S>>(constructor: System.Constructor<S, T>): T {
     this.removeSystem(constructor.name)
-    const s = new constructor(this, this.renderer.screen, this.signaler)
+    const s = new constructor(this, this, this.signaler)
     this.systems.set(constructor.name, s)
     return s
   }
@@ -130,26 +145,19 @@ export abstract class Scene<S extends SignalMap> extends World {
     return this.systems.delete(key)
   }
 
+  private addSystemIfNeeded<T extends System<S>>(
+    typeValue: System.Constructor<S, T>,
+    config?: (system: T) => void,
+  ) {
+    if (!this.systems.has(typeValue.name)) {
+      const s = this.createSystem(typeValue)
+      config?.(s)
+    }
+  }
+
   private onResized() {
     this.inputPad.setSize(Screen.width, Screen.height)
   }
-
-  // Debug ⬇️
-
-  // initDebugIfNeeded(signals: Signals.Bus<S>) {
-  //   if (!this.options?.debug) {
-  //     return
-  //   }
-  //   this.debugDisplay = new Debug.Display(this.options.debug)
-  //   this.getLayer(Stage.Layer.DEBUG).attach(this.debugDisplay)
-  //   this.addChild(this.debugDisplay)
-
-  //   this.debugDisplay.init(this, signals)
-  // }
-
-  // updateDebug(fps: number) {
-  //   this.debugDisplay?.stats?.update(fps)
-  // }
 }
 
 export namespace Scene {
@@ -159,8 +167,6 @@ export namespace Scene {
   ) => Scene<S>
 
   export interface Options {
-    // bounds: Rectangle
-    // debug: Debug.Options.Scene
     physics?: Partial<PhysicsSystem.Options>
   }
 }

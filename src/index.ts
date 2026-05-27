@@ -12,6 +12,7 @@ export * from './World'
 export * from './System'
 export * from './systems'
 
+export * from './View'
 export * from './Scene'
 
 export * from './signal'

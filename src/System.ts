@@ -6,6 +6,7 @@ import {
   type Signaler,
   Disconnectable,
   Signal,
+  View,
 } from './'
 
 export abstract class System<S extends SignalMap> {
@@ -13,9 +14,13 @@ export abstract class System<S extends SignalMap> {
 
   constructor(
     protected world: World,
-    protected screen: Rectangle,
+    protected view: View,
     protected signaler: Signaler<S>,
   ) {}
+
+  get viewport(): Rectangle {
+    return this.view.viewport
+  }
 
   abstract init(): void
 
@@ -26,9 +31,9 @@ export abstract class System<S extends SignalMap> {
     this.connections.forEach((c) => c.disconnect())
   }
 
-  fixedUpdate?(dT: number): void
+  fixedUpdate?(dt: number): void
 
-  update?(dT: number): void
+  update?(dt: number): void
 
   /* HELPER METHODS */
 
@@ -72,7 +77,7 @@ export abstract class System<S extends SignalMap> {
 export namespace System {
   export type Constructor<S extends SignalMap, T extends System<S>> = new (
     world: World,
-    screen: Rectangle,
+    view: View,
     signaler: Signaler<S>,
   ) => T
 }

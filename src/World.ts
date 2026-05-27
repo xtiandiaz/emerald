@@ -21,16 +21,6 @@ export class World extends Container {
     this.renderLayers.forEach((rl) => this.addChild(rl))
   }
 
-  // get currentCamera(): EntityComponent<Camera> | undefined {
-  //   if (this.currentCameraEntityId && this.hasComponent('camera', this.currentCameraEntityId)) {
-  //     return {
-  //       entityId: this.currentCameraEntityId,
-  //       component: this.getComponent('camera', this.currentCameraEntityId)!,
-  //     }
-  //   }
-  //   return undefined
-  // }
-
   getLayer(key: World.Layer): RenderLayer {
     return this.renderLayers.get(key)!
   }
