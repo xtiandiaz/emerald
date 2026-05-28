@@ -16,8 +16,16 @@ export abstract class System<S extends SignalMap> {
     protected world: World,
     protected view: View,
     protected signaler: Signaler<S>,
+    private _priority: number,
   ) {}
 
+  get priority(): number {
+    return this._priority
+  }
+
+  get bounds(): Rectangle {
+    return this.view.bounds
+  }
   get viewport(): Rectangle {
     return this.view.viewport
   }
@@ -58,6 +66,13 @@ export abstract class System<S extends SignalMap> {
     if (c5) this.world.addComponent(c5, entityId)
   }
 
+  hasComponent<T extends Component>(
+    typeValue: Component.Constructor<T>,
+    entityId: number,
+  ): boolean {
+    return this.world.hasComponent(typeValue, entityId)
+  }
+
   getComponent<T extends Component>(
     typeValue: Component.Constructor<T>,
     entityId: number,
@@ -79,5 +94,6 @@ export namespace System {
     world: World,
     view: View,
     signaler: Signaler<S>,
+    priority: number,
   ) => T
 }

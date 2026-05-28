@@ -1,16 +1,19 @@
-import { Container, Rectangle, Renderer, Sprite, Transform } from 'pixi.js'
+import { Rectangle, Renderer, Sprite } from 'pixi.js'
 import { World, System, Screen, SignalMap, Signaler, Disconnectable, Component, View } from '.'
 import { Camera, Collider, RigidBody } from './components'
-import { CameraSystem, PhysicsSystem } from './systems'
+import { CameraSystem, PhysicsSystem, TransformSystem } from './systems'
+import { EMath } from './extras'
 
 export abstract class Scene<S extends SignalMap> extends World implements View {
-  protected readonly systems = new Map<string, System<S>>()
+  protected readonly systems = new Array<System<S>>()
   protected readonly connections = Array<Disconnectable>()
 
   private inputPad = new Sprite()
+  private options!: Scene.Options
   private physicsOptions!: PhysicsSystem.Options
   private currentCameraId?: number
   private _camera?: View.CameraEntity
+  private isInit = false
 
   constructor(
     protected renderer: Renderer,
@@ -18,15 +21,19 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
   ) {
     super()
 
+    this._createSystem(TransformSystem, 0)
+
     this.addChild(this.inputPad)
 
     this.renderer.addListener('resize', this.onResized)
   }
 
+  get bounds(): Rectangle {
+    return this.options?.bounds ?? this.viewport
+  }
   get viewport(): Rectangle {
     return this.renderer.screen
   }
-
   get camera(): View.CameraEntity | undefined {
     return this._camera
   }
@@ -41,14 +48,16 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     return c
   }
 
-  async init?(): Promise<void>
+  abstract init(): Promise<void>
   async _init(options?: Partial<Scene.Options>): Promise<void> {
-    // this.options = { ...options }
-    this.physicsOptions = { ...options?.physics, ...PhysicsSystem.defaultOptions() }
+    this.options = { ...options }
+    this.physicsOptions = { ...PhysicsSystem.defaultOptions(), ...options?.physics }
 
     await this.init?.()
 
-    this.systems.forEach((s) => s.init() ?? [])
+    this.systems.forEach((s) => s.init())
+
+    this.isInit = true
   }
 
   async deinit?(): Promise<void>
@@ -68,34 +77,15 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     this.systems.forEach((s) => {
       s.fixedUpdate?.(dt)
     })
+    this.fixedUpdate?.(dt)
   }
 
   update?(dt: number): void
   _update(dt: number) {
-    let rb: RigidBody, t: Transform
-    for (const e of this._entities.values()) {
-      rb = e.components.get(RigidBody.name) as RigidBody
-      if (rb) {
-        // Only updating Containers here, to reflect the RigidBody's transform.
-        // The Colliders are being fixed-updated accordingly by the PhysicsSystem
-        for (const c of e.components.values().filter((c) => c instanceof Container)) {
-          c.setFromMatrix(rb.matrix)
-        }
-      } else {
-        t = e.components.get(Transform.name) as Transform
-        if (!t) continue
-        for (const c of e.components.values()) {
-          if (c instanceof Container) {
-            c.setFromMatrix(t.matrix)
-          } else if (c instanceof Collider) {
-            c._transform.setFromMatrix(t.matrix)
-          }
-        }
-      }
-    }
     this.systems.forEach((s) => {
       s.update?.(dt)
     })
+    this.update?.(dt)
   }
 
   createEntity(tag?: string): number {
@@ -121,38 +111,66 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
       const col = this.getComponent(Collider, entityId)
       if (col) c.resetShapeProperties(col, this.physicsOptions.pixelsPerMeter)
 
-      this.addSystemIfNeeded(PhysicsSystem, (ps) => {
-        ps._init(this.physicsOptions)
+      this.createSystemIfNeeded(PhysicsSystem, -Infinity, (ps) => {
+        ps.options = this.physicsOptions
       })
     } else if (c instanceof Collider) {
       const rb = this.getComponent(RigidBody, entityId)
       if (rb) rb.resetShapeProperties(c, this.physicsOptions.pixelsPerMeter)
     } else if (c instanceof Camera) {
-      this.addSystemIfNeeded(CameraSystem)
+      this.createSystemIfNeeded(CameraSystem, Infinity)
     }
     return c
   }
 
-  createSystem<T extends System<S>>(constructor: System.Constructor<S, T>): T {
-    this.removeSystem(constructor.name)
-    const s = new constructor(this, this, this.signaler)
-    this.systems.set(constructor.name, s)
+  createSystem<T extends System<S>>(constructor: System.Constructor<S, T>, priority = 1): T {
+    switch (constructor.name) {
+      case TransformSystem.name:
+      case PhysicsSystem.name:
+      case CameraSystem.name:
+        throw new Error()
+    }
+    return this._createSystem(constructor, EMath.clamp(priority, 1, 1000))
+  }
+
+  removeSystem<T extends System<S>>(typeValue: System.Constructor<S, T>): boolean {
+    this.getSystem(typeValue)?.deinit?.()
+    const i = this.systems.findIndex((s) => s instanceof typeValue)
+    const didFind = i >= 0
+    if (didFind) this.systems.splice(i)
+    return didFind
+  }
+
+  private createSystemIfNeeded<T extends System<S>>(
+    typeValue: System.Constructor<S, T>,
+    priority: number,
+    preInit?: (system: T) => void,
+  ) {
+    if (this.hasSystem(typeValue)) {
+      return
+    }
+    const s = this._createSystem(typeValue, priority)
+    preInit?.(s)
+    if (this.isInit) s.init()
+  }
+
+  private _createSystem<T extends System<S>>(
+    constructor: System.Constructor<S, T>,
+    priority: number,
+  ) {
+    this.removeSystem(constructor)
+    const s = new constructor(this, this, this.signaler, priority)
+    this.systems.push(s)
+    this.systems.sort((a, b) => a.priority - b.priority)
     return s
   }
 
-  removeSystem(key: string): boolean {
-    this.systems.get(key)?.deinit?.()
-    return this.systems.delete(key)
+  private hasSystem<T extends System<S>>(typeValue: System.Constructor<S, T>): boolean {
+    return this.systems.findIndex((s) => s instanceof typeValue) >= 0
   }
 
-  private addSystemIfNeeded<T extends System<S>>(
-    typeValue: System.Constructor<S, T>,
-    config?: (system: T) => void,
-  ) {
-    if (!this.systems.has(typeValue.name)) {
-      const s = this.createSystem(typeValue)
-      config?.(s)
-    }
+  private getSystem<T extends System<S>>(typeValue: System.Constructor<S, T>): T | undefined {
+    return this.systems.find((s) => s instanceof typeValue) as T
   }
 
   private onResized() {
@@ -167,6 +185,7 @@ export namespace Scene {
   ) => Scene<S>
 
   export interface Options {
+    bounds?: Rectangle
     physics?: Partial<PhysicsSystem.Options>
   }
 }

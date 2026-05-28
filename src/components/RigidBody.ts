@@ -15,7 +15,7 @@ export class RigidBody extends Transform {
   readonly _force = new Vector()
   torque = 0
 
-  _restitution = 0
+  _restitution = 0.1
   readonly _friction: Physics.Friction = {
     static: 0.5,
     dynamic: 0.3,

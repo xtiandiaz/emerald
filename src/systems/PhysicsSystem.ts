@@ -4,20 +4,27 @@ import { Gravity, PhysicsEngine } from '../physics'
 import { Collision, CollisionMap } from '../collision'
 import { Collider, RigidBody } from '../components'
 import { Vector } from '../types'
+import { Container } from 'pixi.js'
 
 export class PhysicsSystem<S extends SignalMap> extends System<S> {
+  options = PhysicsSystem.defaultOptions()
+
   private readonly engine = new PhysicsEngine()
   private readonly rcs = new Array<PhysicsSystem.ResolvableCollision>()
-  private options!: PhysicsSystem.Options
 
-  _init(options: PhysicsSystem.Options) {
-    this.options = options
+  init() {}
+
+  update(_: number): void {
+    const rbs = this.world.getComponents(RigidBody)
+    for (const [e, rb] of rbs) {
+      for (const c of this.world.getInstanceComponents(Container, e) ?? []) {
+        c.setFromMatrix(rb.matrix)
+      }
+    }
   }
 
-  init(): void {}
-
   fixedUpdate(dt: number): void {
-    const rbs = this.world.getAllComponents(RigidBody)
+    const rbs = this.world.getComponents(RigidBody)
     let i: number, col_a: Collider | undefined, col_b: Collider | undefined, collisionCount: number
 
     dt /= this.options.iterations
@@ -71,6 +78,10 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
       }
       // this.rcs.length = collisionCount // Free unused ones for GC
     }
+  }
+
+  _update(rb: RigidBody, c: Container) {
+    c.setFromMatrix(rb.matrix)
   }
 }
 

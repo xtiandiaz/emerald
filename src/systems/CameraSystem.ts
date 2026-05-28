@@ -7,53 +7,58 @@ export class CameraSystem<S extends SignalMap> extends System<S> {
   private speed?: number
   private pos = { target: new Point(), focus: new Point() }
   private zoom = { next: 1, cur: 1 }
+  private isFirstFocus = true
 
   init() {}
 
   update(dt: number): void {
-    if (!this.focus()) {
+    const c = this.view.camera
+    if (!c) {
       return
     }
-    if (this.speed !== undefined) {
+    this.focus(c[0], c[1])
+
+    this.speed = c[0].speed
+    if (this.isFirstFocus || this.speed === undefined) {
+      this.zoom.cur = this.zoom.next
+      this.view.position.copyFrom(this.pos.focus)
+      this.isFirstFocus = false
+    } else {
       const dd = dt * this.speed
       this.zoom.cur += (this.zoom.next - this.zoom.cur) * dd
-      this.view.scale.set(this.zoom.cur)
       this.view.position.x += (this.pos.focus.x - this.view.position.x) * dd
       this.view.position.y += (this.pos.focus.y - this.view.position.y) * dd
-    } else {
-      this.view.position.copyFrom(this.pos.focus)
-      this.view.scale.set(this.zoom.next)
     }
+    this.view.scale.set(this.zoom.cur)
   }
 
-  focus(): boolean {
-    const c = this.view.camera
-    if (!c) return false
-    const t = this.getComponent(c[0].target, c[1])
-    if (!t) return false
-    this._focus(c[0], t.position)
-    return true
-  }
-
-  private _focus(camera: Camera, targetPos: Point) {
-    this.speed = camera.speed
+  private focus(camera: Camera, entityId: number) {
     this.zoom.next = camera.zoom
 
-    targetPos.multiplyByScalar(this.zoom.next, this.pos.target)
-    this.pos.target.subtract(camera.offset, this.pos.target)
+    const target = this.getComponent(camera.target, entityId)
+    if (!target) {
+      return
+    }
+    target.position.multiplyByScalar(this.zoom.next, this.pos.target)
 
-    // const zvpW = this.viewport.width * this.zoom.next
-    // const zvpH = this.viewport.height * this.zoom.next
-    const vpHalfW = this.viewport.width * 0.5
-    const vpHalfH = this.viewport.height * 0.5
+    const zbdW = this.bounds.width * this.zoom.next
+    const zbdH = this.bounds.height * this.zoom.next
 
-    this.pos.focus.x = -this.pos.target.x + vpHalfW
-    // zvpW < this.viewport.width
-    //   ? (this.viewport.width - zvpW) * 0.5
-    // : EMath.clamp(-this.pos.target.x + vpHalfW, -zvpW + this.viewport.width, 0) + camera.offset.x
-    this.pos.focus.y = -this.pos.target.y + vpHalfH
-    // zvpH < this.viewport.height
-    //   ? (this.viewport.height - zvpH) * 0.5
-    // : EMath.clamp(-this.pos.target.y + vpHalfH, -zvpH + this.viewport.height, 0) + camera.offset.y
+    this.pos.focus.x =
+      zbdW < this.viewport.width
+        ? (this.viewport.width - zbdW) * 0.5
+        : EMath.clamp(
+            -this.pos.target.x + this.viewport.width * 0.5,
+            this.viewport.width - zbdW,
+            0,
+          ) + camera.offset.x
+    this.pos.focus.y =
+      zbdH < this.viewport.height
+        ? (this.viewport.height - zbdH) * 0.5
+        : EMath.clamp(
+            -this.pos.target.y + this.viewport.height * 0.5,
+            this.viewport.height - zbdH,
+            0,
+          ) - camera.offset.y
   }
 }

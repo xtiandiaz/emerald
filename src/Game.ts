@@ -76,7 +76,6 @@ export class Game<S extends SignalMap> extends Application {
     this.signalBus.emitQueued()
 
     this.scene?._update(ticker.deltaTime)
-    // this.scene?.updateDebug(ticker.FPS)
   }
 
   private onResized(width: number, height: number) {

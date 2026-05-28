@@ -1,7 +1,8 @@
-import { Point, PointData, Rectangle } from 'pixi.js'
+import { Point, Rectangle } from 'pixi.js'
 import { Camera } from './components'
 
 export interface View {
+  bounds: Rectangle
   viewport: Rectangle
   position: Point
   scale: Point

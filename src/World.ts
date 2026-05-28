@@ -1,4 +1,4 @@
-import { Container, DestroyOptions, RenderLayer } from 'pixi.js'
+import { Container, RenderLayer } from 'pixi.js'
 import { Component, Entity } from '.'
 
 export class World extends Container {
@@ -13,7 +13,6 @@ export class World extends Container {
       new RenderLayer(),
     ]),
   )
-  private currentCameraEntityId?: number
 
   constructor() {
     super()
@@ -23,14 +22,6 @@ export class World extends Container {
 
   getLayer(key: World.Layer): RenderLayer {
     return this.renderLayers.get(key)!
-  }
-
-  setCurrentCamera(entityId: number) {
-    // if (this.id2ComponentsMap.has(entityId) && this.id2ComponentsMap.get(entityId)!.has('camera')) {
-    //   this.currentCameraEntityId = entityId
-    // } else {
-    //   console.warn(`Undefined Camera for entity-id ${entityId}`)
-    // }
   }
 
   createEntity(tag?: string): number {
@@ -95,11 +86,11 @@ export class World extends Container {
       console.error('Undefined entity', entityId)
       return
     }
-    const key = component.constructor.name
-    if (e.components.has(key)) {
-      this.removeComponent(key, entityId)
+    const name = component.constructor.name
+    if (e.components.has(name)) {
+      this._removeComponent(name, entityId)
     }
-    e.components.set(key, component)
+    e.components.set(name, component)
     if (component instanceof Container) {
       this.addChild(component)
     }
@@ -120,7 +111,7 @@ export class World extends Container {
     return this._entities.get(entityId)?.components.get(typeValue.name) as T
   }
 
-  getAllComponents<T extends Component>(typeValue: Component.Constructor<T>): Map<number, T> {
+  getComponents<T extends Component>(typeValue: Component.Constructor<T>): Map<number, T> {
     return new Map(
       this._entities
         .values()
@@ -129,17 +120,22 @@ export class World extends Container {
     )
   }
 
-  removeComponent(key: string, entityId: number): boolean {
-    const e = this._entities.get(entityId)
-    if (!e) {
-      console.error('Undefined entity', entityId)
-      return false
-    }
-    const c = e.components.get(key)
-    if (c instanceof Container) {
-      this.removeChild(c)
-    }
-    return e.components.delete(key)
+  getInstanceComponents<T extends Component>(
+    typeValue: Component.Constructor<T>,
+    entityId: number,
+  ) {
+    return this._entities
+      .get(entityId)
+      ?.components.values()
+      .filter((c) => c instanceof typeValue)
+      .map((c) => c as T)
+  }
+
+  removeComponent<T extends Component>(
+    typeValue: Component.Constructor<T>,
+    entityId: number,
+  ): boolean {
+    return this._removeComponent(typeValue.name, entityId)
   }
 
   destroy(): void {
@@ -147,6 +143,19 @@ export class World extends Container {
     this.tags.clear()
 
     super.destroy(true)
+  }
+
+  private _removeComponent(name: string, entityId: number): boolean {
+    const e = this._entities.get(entityId)
+    if (!e) {
+      console.error('Undefined entity', entityId)
+      return false
+    }
+    const c = e.components.get(name)
+    if (c instanceof Container) {
+      this.removeChild(c)
+    }
+    return e.components.delete(name)
   }
 }
 
