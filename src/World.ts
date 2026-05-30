@@ -84,6 +84,7 @@ export class World extends Container {
     e.components.set(name, component)
     if (component instanceof RigidBody) {
       this._rbs.push([component, entityId])
+      // console.log(this._rbs.length)
     } else if (component instanceof Container) {
       e.addChild(component)
     }

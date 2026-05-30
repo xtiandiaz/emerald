@@ -8,16 +8,18 @@ export function calculateShapeProperties(
   density: number,
   ppm: number, // pixels per meter
 ): ShapeProperties {
-  let mass: number, momentOfInertia: number
+  const sq_ppm = ppm * ppm
+  let area: number, mass: number, momentOfInertia: number
 
   // "Second moment of area"s ("moment of inertia"s) formulae borrowed from
   // https://en.wikipedia.org/wiki/List_of_second_moments_of_area
   if (shape instanceof Circle) {
     // Mass in terms of the shape's area and (its optional, uniform) density
     // https://en.wikipedia.org/wiki/Area_density; m = A * 𝑝
-    const r = shape.radius / ppm
-    mass = Math.PI * Math.pow(r, 2) * density
-    momentOfInertia = (mass * Math.pow(r, 4)) / 2
+    const r = shape.radius
+    area = (Math.PI * Math.pow(r, 2)) / sq_ppm
+    mass = area * density
+    momentOfInertia = (mass * Math.pow(r, 2)) / 2
   } else if (shape instanceof ConvexPolygon) {
     // For "Any Polygon" more explicitly described here
     // https://en.wikipedia.org/wiki/Second_moment_of_area
@@ -25,10 +27,9 @@ export function calculateShapeProperties(
     const vertices = shape._localVertices
     const v0 = new Point(),
       v1 = new Point()
-    const sq_ppm = ppm * ppm
-    let v0_x_v1: number,
-      area = 0
+    let v0_x_v1: number
 
+    area = 0
     momentOfInertia = 0
     for (let i = 0; i < vertices.length; i++) {
       // Relocate vertices to the origin using the centroid
