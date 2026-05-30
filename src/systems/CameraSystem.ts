@@ -19,7 +19,7 @@ export class CameraSystem<S extends SignalMap> extends System<S> {
     this.focus(c[0], c[1])
 
     this.speed = c[0].speed
-    if (this.isFirstFocus || this.speed === undefined) {
+    if (this.speed === undefined || this.isFirstFocus) {
       this.zoom.cur = this.zoom.next
       this.view.position.copyFrom(this.pos.focus)
       this.isFirstFocus = false
@@ -35,7 +35,7 @@ export class CameraSystem<S extends SignalMap> extends System<S> {
   private focus(camera: Camera, entityId: number) {
     this.zoom.next = camera.zoom
 
-    const target = this.getComponent(camera.target, entityId)
+    const target = this.world.getTransform(entityId)
     if (!target) {
       return
     }

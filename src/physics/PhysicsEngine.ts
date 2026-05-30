@@ -82,7 +82,7 @@ export class PhysicsEngine {
       if (vr_dot_n > 0) {
         continue
       }
-      // Reaction impulse magnitude (jr)
+      // Reaction impulse (jr)
       let jr = -(1 + coeffs.restitution) * vr_dot_n
       const ra = this.ras[i]!
       const rb = this.rbs[i]!
@@ -90,15 +90,13 @@ export class PhysicsEngine {
       const irxn_rb = EMath.scalarCross(b.invMoi * rb.cross(normal), rb)
       jr /= sumInvMasses + irxn_ra.add(irxn_rb).dot(normal)
       jr /= cpCount
-      if (EMath.isNearlyEqual(jr, 0, Physics.NEARLY_ZERO_MAGNITUDE)) {
-        continue
-      }
-      // Reaction impulse (Jr)
-      impulse.set(normal.x * jr, normal.y * jr)
-      this.applyImpulse(impulse, a, ra, -1)
-      this.applyImpulse(impulse, b, rb, 1)
+      if (!EMath.isNearlyEqual(jr, 0, Physics.NEARLY_ZERO_MAGNITUDE)) {
+        impulse.set(normal.x * jr, normal.y * jr)
+        this.applyImpulse(impulse, a, ra, -1)
+        this.applyImpulse(impulse, b, rb, 1)
 
-      this.resetRelativeVelocity(a, b, i)
+        this.resetRelativeVelocity(a, b, i)
+      }
 
       // Tangent
       vr.subtract(normal.multiplyByScalar(normal.dot(vr)), this.tan)
@@ -110,10 +108,9 @@ export class PhysicsEngine {
       const js = jr * coeffs.friction.static
       const jd = jr * coeffs.friction.dynamic
       const vr_dot_tan = vr.dot(this.tan)
-      // Frictional impulse magnitude (jf)
+      // Frictional impulse (jf)
       let jf = vr_dot_tan === 0 || vr_dot_tan <= js ? -vr_dot_tan : -jd
       jf /= cpCount
-      // Frictional impulse (Jf)
       impulse.set(this.tan.x * jf, this.tan.y * jf)
       this.applyImpulse(impulse, a, ra, -1)
       this.applyImpulse(impulse, b, rb, 1)

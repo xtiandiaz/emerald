@@ -7,6 +7,7 @@ import {
   Disconnectable,
   Signal,
   View,
+  Entity,
 } from './'
 
 export abstract class System<S extends SignalMap> {
@@ -45,8 +46,8 @@ export abstract class System<S extends SignalMap> {
 
   /* HELPER METHODS */
 
-  createEntity(tag?: string) {
-    return this.world.createEntity(tag)
+  createEntity(options?: Partial<Entity.Options>) {
+    return this.world.createEntity(options)
   }
 
   addComponent<

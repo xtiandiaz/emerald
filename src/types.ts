@@ -6,8 +6,12 @@ export interface Range {
   min: number
   max: number
 }
-export namespace Range {
-  export const point = (minAndMax: number) => ({ min: minAndMax, max: minAndMax })
+
+export interface Transform {
+  position: Point
+  rotation: number
+  angle: number
+  scale: PointData
 }
 
 export interface Disconnectable {

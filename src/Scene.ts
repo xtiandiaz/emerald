@@ -1,7 +1,7 @@
-import { Rectangle, Renderer, Sprite } from 'pixi.js'
-import { World, System, SignalMap, Signaler, Disconnectable, Component, View } from '.'
+import { Matrix, Rectangle, Renderer, Sprite } from 'pixi.js'
+import { World, System, SignalMap, Signaler, Disconnectable, Component, View, Entity } from '.'
 import { Camera, Collider, RigidBody } from './components'
-import { CameraSystem, PhysicsSystem, TransformSystem } from './systems'
+import { CameraSystem, PhysicsSystem } from './systems'
 import { EMath } from './extras'
 
 export abstract class Scene<S extends SignalMap> extends World implements View {
@@ -19,8 +19,6 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     protected signaler: Signaler<S>,
   ) {
     super()
-
-    this._createSystem(TransformSystem, 0)
 
     this.eventMode = 'static'
     this.addChild(this.inputPad)
@@ -81,20 +79,36 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     this.systems.forEach((s) => {
       s.fixedUpdate?.(dt)
     })
+
     this.fixedUpdate?.(dt)
   }
 
   update?(dt: number): void
   _update(dt: number) {
+    let rb: RigidBody | undefined,
+      cr: Collider | undefined,
+      matrix = new Matrix()
+
+    this._entities.forEach((e) => {
+      rb = e.getComponent(RigidBody)
+      if (rb) {
+        e.setFromMatrix(rb.matrix)
+      } else {
+        cr = e.getComponent(Collider)
+        if (cr) cr._transform.setFromMatrix(e.getGlobalTransform(matrix, false))
+      }
+    })
+
     this.systems.forEach((s) => {
       s.update?.(dt)
     })
+
     this.update?.(dt)
   }
 
-  createEntity(tag?: string): number {
-    const id = super.createEntity(tag)
-    this.signaler.emit('entity-added', { id, tag })
+  createEntity(options?: Partial<Entity.Options>): number {
+    const id = super.createEntity(options)
+    this.signaler.emit('entity-added', { id, tag: options?.tag })
     return id
   }
 
@@ -128,7 +142,6 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
 
   createSystem<T extends System<S>>(constructor: System.Constructor<S, T>, priority = 1): T {
     switch (constructor.name) {
-      case TransformSystem.name:
       case PhysicsSystem.name:
       case CameraSystem.name:
         throw new Error(`${constructor.name} will be created automatically if needed`)

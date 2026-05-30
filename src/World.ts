@@ -1,25 +1,25 @@
-import { Container, Transform } from 'pixi.js'
-import { Component, Entity } from '.'
-import { Collider, RigidBody } from './components'
+import { Container } from 'pixi.js'
+import { Component, Entity, Transform } from '.'
+import { RigidBody } from './components'
 
 export class World extends Container {
+  _rbs = new Array<[RigidBody, entityId: number]>()
+
   protected _entities = new Map<number, Entity>()
-  // private rbs = new Array<RigidBody>()
-  // private trs = new Array<Transform>()
 
   private nextEntityId = 1
   private tags = new Map<string, Set<number>>()
 
-  createEntity(tag?: string): number {
+  createEntity(options?: Partial<Entity.Options>): number {
     const id = this.nextEntityId++
-    this._entities.set(id, {
-      id,
-      tag,
-      components: new Map<string, Component>(),
-    })
-    if (tag) {
-      this.tag(id, tag)
+    const e = new Entity(id, options)
+    this._entities.set(id, e)
+
+    if (options?.tag) {
+      this.tag(id, options.tag)
     }
+
+    this.addChild(e)
     return id
   }
 
@@ -40,6 +40,8 @@ export class World extends Container {
     if (e.tag) {
       this.tags.get(e.tag)?.delete(e.id)
     }
+
+    this.removeChild(e)
     return this._entities.delete(id)
   }
 
@@ -74,12 +76,18 @@ export class World extends Container {
     }
     const name = component.constructor.name
     if (e.components.has(name)) {
-      this._removeComponent(name, entityId)
+      if (!this._removeComponent(name, entityId)) {
+        console.error(`Can't add duplicate ${name} component`)
+        return
+      }
     }
     e.components.set(name, component)
-    if (component instanceof Container) {
-      this.addChild(component)
+    if (component instanceof RigidBody) {
+      this._rbs.push([component, entityId])
+    } else if (component instanceof Container) {
+      e.addChild(component)
     }
+
     return component
   }
 
@@ -121,6 +129,10 @@ export class World extends Container {
     return this._removeComponent(typeValue.name, entityId)
   }
 
+  getTransform(entityId: number): Transform | undefined {
+    return this._entities.get(entityId)
+  }
+
   destroy(): void {
     this._entities.clear()
     this.tags.clear()
@@ -135,17 +147,13 @@ export class World extends Container {
       return false
     }
     const c = e.components.get(name)
-    if (c instanceof Container) {
-      this.removeChild(c)
+    if (c instanceof RigidBody) {
+      const i = this._rbs.findIndex(([, id]) => id === entityId)
+      this._rbs.splice(i, 1)
+    } else if (c instanceof Container) {
+      e.removeChild(c)
     }
-    return e.components.delete(name)
-  }
-}
 
-export namespace World {
-  export enum Layer {
-    ENTITIES = 'entities',
-    UI = 'ui',
-    DEBUG = 'debug',
+    return e.components.delete(name)
   }
 }

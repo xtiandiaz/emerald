@@ -14,17 +14,8 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
 
   init() {}
 
-  update(_: number): void {
-    const rbs = this.world.getComponents(RigidBody)
-    for (const [e, rb] of rbs) {
-      for (const c of this.world.getLikeComponents(Container, e) ?? []) {
-        c.setFromMatrix(rb.matrix)
-      }
-    }
-  }
-
   fixedUpdate(dt: number): void {
-    const rbs = this.world.getComponents(RigidBody)
+    const rbs = this.world._rbs
     let i: number,
       cr_a: Collider | undefined,
       cr_b: Collider | undefined,
@@ -35,21 +26,24 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
     for (let it = 0; it < this.options.iterations; it++) {
       collisionCount = 0
 
-      for (const [e, rb] of rbs) {
-        cr_a = this.world.getComponent(Collider, e)
+      for (i = 0; i < rbs.length; i++) {
+        const [rb, e] = rbs[i]
+        cr_a = this.getComponent(Collider, e)
         if (!cr_a) {
           continue
         }
         this.engine.stepBody(rb, this.options.gravity, this.options.ppm, dt)
         cr_a._transform.setFromMatrix(rb.matrix)
       }
-      i = 1
-      for (const [ea, rb_a] of rbs) {
+
+      for (i = 0; i < rbs.length; i++) {
+        const [rb_a, ea] = rbs[i]
         cr_a = this.world.getComponent(Collider, ea)
         if (!cr_a) {
           continue
         }
-        for (const [eb, rb_b] of rbs.entries().drop(i)) {
+        for (let j = i + 1; j < rbs.length; j++) {
+          const [rb_b, eb] = rbs[j]
           cr_b = this.world.getComponent(Collider, eb)
           if (!cr_b || !cr_a.canCollide(cr_b, this.options.collisionMap)) {
             continue
@@ -72,8 +66,8 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
           }
           collisionCount++
         }
-        i++
       }
+
       for (i = 0; i < collisionCount; i++) {
         const rc = this.rcs[i]
         this.engine.resolveCollision(rc.a, rc.b, rc.c)
@@ -97,7 +91,7 @@ export namespace PhysicsSystem {
 
   export const defaultOptions = (): Options => ({
     gravity: new Vector(0, 0.981), // m/s^2,
-    iterations: 4,
+    iterations: 1, // Increase for more refined collisions at the cost of performance
     ppm: 100,
   })
 
