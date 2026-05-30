@@ -3,10 +3,9 @@ import { EMath } from '../extras'
 
 declare global {
   interface Vector2Math {
-    isNearlyEqualTo(other: PointData, minDistance?: number): boolean
-
     magnitudeSquared(): number
     magnitude(): number
+    magnitudeIsNearlyEqualTo(other: PointData, length: number): boolean
 
     add<T extends PointData = Point>(other: PointData, out_point?: T): T
     addScalar<T extends PointData = Point>(scalar: number, out_point?: T): T
@@ -41,12 +40,10 @@ Point.prototype.magnitude = ObservablePoint.prototype.magnitude = function (this
   return Math.sqrt(this.magnitudeSquared())
 }
 
-Point.prototype.isNearlyEqualTo = ObservablePoint.prototype.isNearlyEqualTo = function (
-  other: PointData,
-  minDistance: number = 0.001,
-): boolean {
-  return this.subtract(other).magnitudeSquared() <= minDistance * minDistance
-}
+Point.prototype.magnitudeIsNearlyEqualTo = ObservablePoint.prototype.magnitudeIsNearlyEqualTo =
+  function (other: PointData, length: number): boolean {
+    return this.subtract(other).magnitudeSquared() <= length * length
+  }
 
 Point.prototype.add = ObservablePoint.prototype.add = function <T extends PointData>(
   this,

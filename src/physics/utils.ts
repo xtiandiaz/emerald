@@ -13,31 +13,32 @@ export function calculateShapeProperties(
   // "Second moment of area"s ("moment of inertia"s) formulae borrowed from
   // https://en.wikipedia.org/wiki/List_of_second_moments_of_area
   if (shape instanceof Circle) {
-    const r = shape.radius / ppm
-    momentOfInertia = (Math.PI * Math.pow(r, 4)) / 2
     // Mass in terms of the shape's area and (its optional, uniform) density
     // https://en.wikipedia.org/wiki/Area_density; m = A * 𝑝
+    const r = shape.radius / ppm
     mass = Math.PI * Math.pow(r, 2) * density
+    momentOfInertia = (mass * Math.pow(r, 4)) / 2
   } else if (shape instanceof ConvexPolygon) {
-    // For "Any Polygon" most explicitly described here
+    // For "Any Polygon" more explicitly described here
     // https://en.wikipedia.org/wiki/Second_moment_of_area
     const centroid = shape._localCenter
     const vertices = shape._localVertices
     const v0 = new Point(),
       v1 = new Point()
-    let v0xv1: number,
+    const sq_ppm = ppm * ppm
+    let v0_x_v1: number,
       area = 0
 
     momentOfInertia = 0
     for (let i = 0; i < vertices.length; i++) {
       // Relocate vertices to the origin using the centroid
-      v0.copyFrom(vertices[i]!).subtract(centroid, v0)
-      v1.copyFrom(vertices[(i + 1) % vertices.length]!).subtract(centroid, v1)
-      v0xv1 = EMath.cross(v0, v1) // -> paralellogram area
-      area += v0xv1 / 2 // -> triangle area
-      momentOfInertia = v0xv1 * (EMath.dot(v0, v0) + EMath.dot(v0, v1) + EMath.dot(v1, v1))
+      vertices[i]!.subtract(centroid, v0)
+      vertices[(i + 1) % vertices.length]!.subtract(centroid, v1)
+      v0_x_v1 = EMath.cross(v0, v1) / sq_ppm // -> parallelogram area
+      area += v0_x_v1 / 2 // -> triangle area
+      momentOfInertia += v0_x_v1 * (EMath.dot(v0, v0) + EMath.dot(v0, v1) + EMath.dot(v1, v1))
     }
-    momentOfInertia /= 6
+    momentOfInertia *= density / 6
     mass = area * density
   } else {
     throw new Error(`Undefined shape ${shape}`)

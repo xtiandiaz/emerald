@@ -3,6 +3,7 @@ import { EMath } from '../extras'
 import { Transform } from '.'
 
 export class Camera {
+  framedToBounds = true
   readonly offset = new Point()
   private _speed?: number
   private _zoom = 1
@@ -11,6 +12,7 @@ export class Camera {
     public target: Camera.Target,
     public options?: Partial<Camera.Options>,
   ) {
+    if (options?.frameToBounds !== undefined) this.framedToBounds = options.frameToBounds
     if (options?.offset) this.offset.copyFrom(options.offset)
     if (options?.zoom) this.zoom = options.zoom
     if (options?.speed !== undefined) this.speed = options.speed
@@ -34,6 +36,7 @@ export namespace Camera {
   export type Target = new () => Transform | Container
 
   export interface Options {
+    frameToBounds: boolean
     offset: PointData
     zoom: number
     speed?: number

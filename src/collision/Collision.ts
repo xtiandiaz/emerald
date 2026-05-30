@@ -3,74 +3,60 @@ import { ShapeOverlap } from '.'
 import { Collider } from '../components'
 import { Circle, ConvexPolygon, Shape, Segment } from '../geometry'
 
-export class Collision {
-  _depth: number
-  _normal: Point
+export class Collision extends ShapeOverlap {
   _contacts: [Collision.Contact, Collision.Contact] = [
     { point: new Point(), depth: 0 },
     { point: new Point(), depth: 0 },
   ]
   _contactCount = 0
 
-  private readonly props = {
-    segments: [new Segment(), new Segment()],
-    point: new Point(),
-    negNormal: new Point(),
+  // Props:
+  private readonly __segs: [Segment, Segment] = [new Segment(), new Segment()]
+
+  get hasContact(): boolean {
+    return this._contactCount > 0
   }
 
-  private constructor(shapeOverlap: ShapeOverlap) {
-    this._depth = shapeOverlap.depth
-    this._normal = shapeOverlap.normal.clone()
-  }
+  static from(a: Collider, b: Collider, out_c?: Collision): Collision {
+    out_c ??= new Collision()
+    out_c._contactCount = 0
 
-  get totalContactsDepth(): number {
-    if (this._contactCount <= 0) {
-      return 0
-    } else if (this._contactCount === 1) {
-      return this._contacts[0].depth
-    } else {
-      return this._contacts[0].depth + this._contacts[1].depth
+    ShapeOverlap._from(a._shape, b._shape, out_c)
+    if (out_c.hasOverlap) {
+      this.setContacts(a._shape, b._shape, out_c)
     }
-  }
-
-  static from(a: Collider, b: Collider): Collision | undefined {
-    const overlap = ShapeOverlap.from(a._shape, b._shape)
-    if (!overlap) {
-      return
-    }
-    const col = new this(overlap)
-    this.setContacts(a._shape, b._shape, col)
-    return col
+    return out_c
   }
 
   private static setContacts(a: Shape, b: Shape, c: Collision) {
     if (a instanceof Circle) {
       if (b instanceof Circle) {
-        return this.setContactsFromCircleToCircle(a, b, c)
+        this.setContactsFromCircleToCircle(a, b, c)
       } else if (b instanceof ConvexPolygon) {
-        return this.setContactsFromCircleToPolygon(a, b, c)
+        this.setContactsFromCircleToPolygon(a, b, c)
       }
     } else if (a instanceof ConvexPolygon) {
       if (b instanceof Circle) {
-        return this.setContactsFromPolygonToCircle(a, b, c)
+        this.setContactsFromPolygonToCircle(a, b, c)
       } else if (b instanceof ConvexPolygon) {
-        return this.setContactsFromPolygonToPolygon(a, b, c)
+        this.setContactsFromPolygonToPolygon(a, b, c)
       }
+    } else {
+      throw new Error('Undefined collision')
     }
-    throw new Error('Undefined collision')
   }
 
   private static setContactsFromCircleToCircle(a: Circle, b: Circle, c: Collision) {
     c._contactCount = 1
     const contact = c._contacts[0]
-    contact.point = a._center.add(c._normal.multiplyByScalar(b.radius))
+    contact.point = a._center.add(c._normal.multiplyByScalar(a.radius))
     contact.depth = c._depth
   }
 
   private static setContactsFromCircleToPolygon(a: Circle, b: ConvexPolygon, c: Collision) {
     c._contactCount = 1
     const contact = c._contacts[0]
-    b.getSideAcross(c.props.negNormal).getClosestPoint(a._center, contact.point)
+    b.getSideAcross(c._negNormal).getClosestPoint(a._center, contact.point)
     contact.depth = c._depth
   }
 
@@ -83,8 +69,8 @@ export class Collision {
 
   private static setContactsFromPolygonToPolygon(a: ConvexPolygon, b: ConvexPolygon, c: Collision) {
     const normal = c._normal
-    const sa = a.getSideAcross(normal, c.props.segments[0])
-    const sb = b.getSideAcross(normal.multiplyByScalar(-1), c.props.segments[1])
+    const sa = a.getSideAcross(normal, c.__segs[0])
+    const sb = b.getSideAcross(normal.multiplyByScalar(-1), c.__segs[1])
     // 'Reference' and 'Incident' sides; Ref. is the most perpendicular to the collision's Normal,
     // and thus used to clip the Incident side's vertices to get the collision contact points
     // Source: https://dyn4j.org/2011/11/contact-points-using-clipping/
@@ -96,7 +82,7 @@ export class Collision {
       ref = sb
       inc = sa
     }
-    const clip_normal = ref._vector.normalize()
+    const clip_normal = ref._vector.normalize(c.__v)
     let clip_margin = -1 * clip_normal.dot(ref.p0) // margin opposite to normal
     inc.clipByMarginAlongRef(clip_margin, clip_normal)
 
@@ -104,7 +90,7 @@ export class Collision {
     clip_margin = clip_normal.dot(ref.p1) // margin opposite to normal
     inc.clipByMarginAlongRef(clip_margin, clip_normal)
 
-    const ref_normal = ref._vector.normalize().orthogonalize()
+    const ref_normal = ref._vector.normalize(c.__v).orthogonalize(c.__v)
     const ref_p0_proj = ref_normal.dot(ref.p0)
     const setContactPoint = (inc_point: PointData) => {
       let depth = ref_normal.dot(inc_point) - ref_p0_proj

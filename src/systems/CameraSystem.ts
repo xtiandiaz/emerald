@@ -41,24 +41,22 @@ export class CameraSystem<S extends SignalMap> extends System<S> {
     }
     target.position.multiplyByScalar(this.zoom.next, this.pos.target)
 
-    const zbdW = this.bounds.width * this.zoom.next
-    const zbdH = this.bounds.height * this.zoom.next
+    const cofX = -this.pos.target.x + this.viewport.width * 0.5
+    const cofY = -this.pos.target.y + this.viewport.height * 0.5
 
-    this.pos.focus.x =
-      zbdW < this.viewport.width
-        ? (this.viewport.width - zbdW) * 0.5
-        : EMath.clamp(
-            -this.pos.target.x + this.viewport.width * 0.5,
-            this.viewport.width - zbdW,
-            0,
-          ) + camera.offset.x
-    this.pos.focus.y =
-      zbdH < this.viewport.height
-        ? (this.viewport.height - zbdH) * 0.5
-        : EMath.clamp(
-            -this.pos.target.y + this.viewport.height * 0.5,
-            this.viewport.height - zbdH,
-            0,
-          ) - camera.offset.y
+    if (camera.framedToBounds) {
+      const zbdW = this.bounds.width * this.zoom.next
+      const zbdH = this.bounds.height * this.zoom.next
+      this.pos.focus.x =
+        (zbdW < this.viewport.width
+          ? (this.viewport.width - zbdW) * 0.5
+          : EMath.clamp(cofX, this.viewport.width - zbdW, 0)) + camera.offset.x
+      this.pos.focus.y =
+        (zbdH < this.viewport.height
+          ? (this.viewport.height - zbdH) * 0.5
+          : EMath.clamp(cofY, this.viewport.height - zbdH, 0)) - camera.offset.y
+    } else {
+      this.pos.focus.set(cofX + camera.offset.x, cofY + camera.offset.y)
+    }
   }
 }

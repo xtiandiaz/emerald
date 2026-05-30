@@ -1,6 +1,7 @@
 import { Point } from 'pixi.js'
 import { Shape, ProjectionRange } from '..'
 import { VectorData } from '../..'
+import { EMath } from '../../extras'
 
 export class Circle extends Shape {
   constructor(private readonly _radius: number) {
@@ -12,17 +13,13 @@ export class Circle extends Shape {
   }
 
   getProjectionRange(axis: VectorData, out_projRange?: ProjectionRange): ProjectionRange {
-    if (out_projRange) {
-      out_projRange.min = Infinity
-      out_projRange.max = -Infinity
-    } else {
-      out_projRange = { min: Infinity, max: -Infinity }
-    }
-    const dot = axis.x * this._center.x + axis.y * this._center.y
+    out_projRange ??= { min: -Infinity, max: Infinity }
+    const dot = EMath.dot(axis, this._center)
     const proj0 = dot - this.radius
     const proj1 = dot + this.radius
     out_projRange.min = Math.min(proj0, proj1)
     out_projRange.max = Math.max(proj0, proj1)
+
     return out_projRange
   }
 

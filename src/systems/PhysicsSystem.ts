@@ -17,7 +17,7 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
   update(_: number): void {
     const rbs = this.world.getComponents(RigidBody)
     for (const [e, rb] of rbs) {
-      for (const c of this.world.getInstanceComponents(Container, e) ?? []) {
+      for (const c of this.world.getLikeComponents(Container, e) ?? []) {
         c.setFromMatrix(rb.matrix)
       }
     }
@@ -25,58 +25,60 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
 
   fixedUpdate(dt: number): void {
     const rbs = this.world.getComponents(RigidBody)
-    let i: number, col_a: Collider | undefined, col_b: Collider | undefined, collisionCount: number
+    let i: number,
+      cr_a: Collider | undefined,
+      cr_b: Collider | undefined,
+      c: Collision | undefined,
+      collisionCount: number
 
     dt /= this.options.iterations
     for (let it = 0; it < this.options.iterations; it++) {
-      this.rcs.length = 0
       collisionCount = 0
 
       for (const [e, rb] of rbs) {
-        col_a = this.world.getComponent(Collider, e)
-        if (!col_a) {
+        cr_a = this.world.getComponent(Collider, e)
+        if (!cr_a) {
           continue
         }
-        this.engine.stepBody(rb, this.options.gravity, this.options.pixelsPerMeter, dt)
-        col_a._transform.setFromMatrix(rb.matrix)
+        this.engine.stepBody(rb, this.options.gravity, this.options.ppm, dt)
+        cr_a._transform.setFromMatrix(rb.matrix)
       }
       i = 1
       for (const [ea, rb_a] of rbs) {
-        col_a = this.world.getComponent(Collider, ea)
-        if (!col_a) {
+        cr_a = this.world.getComponent(Collider, ea)
+        if (!cr_a) {
           continue
         }
         for (const [eb, rb_b] of rbs.entries().drop(i)) {
-          col_b = this.world.getComponent(Collider, eb)
-          if (!col_b || !col_a.canCollide(col_b, this.options.collisionMap)) {
+          cr_b = this.world.getComponent(Collider, eb)
+          if (!cr_b || !cr_a.canCollide(cr_b, this.options.collisionMap)) {
             continue
           }
-          const collision = Collision.from(col_a, col_b)
-          // const collision =
-          //   collisionCount < this.rcs.length
-          //     ? this.rcs[collisionCount]!.collision.reset(col_a, col_b)
-          //     : Collision.from(col_a, col_b)
-
-          if (!collision || collision._contactCount === 0) {
+          c = Collision.from(
+            cr_a,
+            cr_b,
+            collisionCount < this.rcs.length ? this.rcs[collisionCount].c : undefined,
+          )
+          if (!c.hasContact) {
             continue
           }
-          // if (collisionCount < this.rcs.length) {
-          //   const rc = this.rcs[collisionCount]
-          //   rc.a = rb_a
-          //   rc.b = rb_b
-          //   rc.collision = collision
-          // } else {
-          this.rcs.push({ a: rb_a, b: rb_b, collision })
-          // }
+          if (collisionCount < this.rcs.length) {
+            const rc = this.rcs[collisionCount]
+            rc.a = rb_a
+            rc.b = rb_b
+            rc.c = c
+          } else {
+            this.rcs.push({ a: rb_a, b: rb_b, c })
+          }
           collisionCount++
         }
         i++
       }
       for (i = 0; i < collisionCount; i++) {
         const rc = this.rcs[i]
-        this.engine.resolveCollision(rc.a, rc.b, rc.collision)
+        this.engine.resolveCollision(rc.a, rc.b, rc.c)
       }
-      // this.rcs.length = collisionCount // Free unused ones for GC
+      this.rcs.length = collisionCount // Free unused ones for GC
     }
   }
 
@@ -89,19 +91,19 @@ export namespace PhysicsSystem {
   export interface Options {
     gravity: Gravity
     iterations: number
-    pixelsPerMeter: number
+    ppm: number // Pixels per meter
     collisionMap?: CollisionMap
   }
 
   export const defaultOptions = (): Options => ({
     gravity: new Vector(0, 0.981), // m/s^2,
     iterations: 4,
-    pixelsPerMeter: 100,
+    ppm: 100,
   })
 
   export interface ResolvableCollision {
     a: RigidBody
     b: RigidBody
-    collision: Collision
+    c: Collision
   }
 }

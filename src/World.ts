@@ -1,28 +1,14 @@
-import { Container, RenderLayer } from 'pixi.js'
+import { Container, Transform } from 'pixi.js'
 import { Component, Entity } from '.'
+import { Collider, RigidBody } from './components'
 
 export class World extends Container {
   protected _entities = new Map<number, Entity>()
+  // private rbs = new Array<RigidBody>()
+  // private trs = new Array<Transform>()
 
   private nextEntityId = 1
   private tags = new Map<string, Set<number>>()
-
-  private renderLayers = new Map(
-    [World.Layer.ENTITIES, World.Layer.UI, World.Layer.DEBUG].map((key) => [
-      key,
-      new RenderLayer(),
-    ]),
-  )
-
-  constructor() {
-    super()
-
-    this.renderLayers.forEach((rl) => this.addChild(rl))
-  }
-
-  getLayer(key: World.Layer): RenderLayer {
-    return this.renderLayers.get(key)!
-  }
 
   createEntity(tag?: string): number {
     const id = this.nextEntityId++
@@ -120,10 +106,7 @@ export class World extends Container {
     )
   }
 
-  getInstanceComponents<T extends Component>(
-    typeValue: Component.Constructor<T>,
-    entityId: number,
-  ) {
+  getLikeComponents<T extends Component>(typeValue: Component.Constructor<T>, entityId: number) {
     return this._entities
       .get(entityId)
       ?.components.values()

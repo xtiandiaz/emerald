@@ -13,7 +13,7 @@ import { VectorData } from '../../types'
 
 export class ConvexPolygon extends Shape {
   readonly _vertices: Point[]
-  readonly _localVertices: PointData[]
+  readonly _localVertices: Point[]
 
   private readonly props = {
     point: new Point(),
@@ -29,7 +29,7 @@ export class ConvexPolygon extends Shape {
   ) {
     super(ConvexPolygon.calculateCentroid(vertices))
 
-    this._localVertices = vertices.map((v) => ({ x: v.x, y: v.y }))
+    this._localVertices = vertices.map((v) => new Point(v.x, v.y))
     this._vertices = vertices.map((v) => new Point(v.x, v.y))
   }
 
@@ -74,9 +74,11 @@ export class ConvexPolygon extends Shape {
     // Maintain clock-wise order for the vertices used in the Segments:
     this.props.segments[0].reset(prev_v, v)
     this.props.segments[1].reset(v, next_v)
+
     out_segment ??= new Segment()
     const mp = Segment.getMostPerpendicular(this.props.segments[0], this.props.segments[1], axis)
     out_segment.copyFrom(mp)
+
     return out_segment
   }
 

@@ -23,8 +23,8 @@ export class Collider {
     return this.canCollide(other) && this._shape.hasAABB(other._shape)
   }
 
-  collides(other: Collider): boolean {
-    return ShapeOverlap.from(this._shape, other._shape) != undefined
+  collides(other: Collider, out_sp?: ShapeOverlap): boolean {
+    return ShapeOverlap._from(this._shape, other._shape, out_sp).hasOverlap
   }
 }
 

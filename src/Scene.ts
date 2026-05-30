@@ -1,11 +1,11 @@
 import { Rectangle, Renderer, Sprite } from 'pixi.js'
-import { World, System, Screen, SignalMap, Signaler, Disconnectable, Component, View } from '.'
+import { World, System, SignalMap, Signaler, Disconnectable, Component, View } from '.'
 import { Camera, Collider, RigidBody } from './components'
 import { CameraSystem, PhysicsSystem, TransformSystem } from './systems'
 import { EMath } from './extras'
 
 export abstract class Scene<S extends SignalMap> extends World implements View {
-  protected readonly systems = new Array<System<S>>()
+  protected systems = new Array<System<S>>()
   protected readonly connections = Array<Disconnectable>()
 
   private inputPad = new Sprite()
@@ -13,7 +13,6 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
   private physicsOptions!: PhysicsSystem.Options
   private currentCameraId?: number
   private _camera?: View.CameraEntity
-  private isInit = false
 
   constructor(
     protected renderer: Renderer,
@@ -23,9 +22,16 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
 
     this._createSystem(TransformSystem, 0)
 
+    this.eventMode = 'static'
     this.addChild(this.inputPad)
 
-    this.renderer.addListener('resize', this.onResized)
+    this.renderer.addListener(
+      'resize',
+      () => {
+        this.resizeInputPad()
+      },
+      this,
+    )
   }
 
   get bounds(): Rectangle {
@@ -53,11 +59,9 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     this.options = { ...options }
     this.physicsOptions = { ...PhysicsSystem.defaultOptions(), ...options?.physics }
 
-    await this.init?.()
+    this.resizeInputPad()
 
-    this.systems.forEach((s) => s.init())
-
-    this.isInit = true
+    await this.init()
   }
 
   async deinit?(): Promise<void>
@@ -67,7 +71,7 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     this.systems.forEach((s) => s.deinit?.())
     this.connections.forEach((c) => c.disconnect())
 
-    this.renderer.removeListener('resize', this.onResized)
+    this.renderer.removeListener('resize')
 
     this.destroy()
   }
@@ -96,27 +100,26 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
 
   removeEntity(id: number): boolean {
     const tag = this.getTag(id)
-    const wasRemoved = super.removeEntity(id)
-    if (wasRemoved) {
+    const didRemove = super.removeEntity(id)
+    if (didRemove) {
       if (this.currentCameraId === id) this.currentCameraId = undefined
 
       this.signaler?.emit('entity-removed', { id, tag })
     }
-    return wasRemoved
+    return didRemove
   }
 
   addComponent<T extends Component>(component: T, entityId: number): T | undefined {
     const c = super.addComponent(component, entityId)
     if (c instanceof RigidBody) {
       const col = this.getComponent(Collider, entityId)
-      if (col) c.resetShapeProperties(col, this.physicsOptions.pixelsPerMeter)
+      if (col) c.resetShapeProperties(col, this.physicsOptions.ppm)
 
       this.createSystemIfNeeded(PhysicsSystem, -Infinity, (ps) => {
         ps.options = this.physicsOptions
       })
     } else if (c instanceof Collider) {
-      const rb = this.getComponent(RigidBody, entityId)
-      if (rb) rb.resetShapeProperties(c, this.physicsOptions.pixelsPerMeter)
+      this.getComponent(RigidBody, entityId)?.resetShapeProperties(c, this.physicsOptions.ppm)
     } else if (c instanceof Camera) {
       this.createSystemIfNeeded(CameraSystem, Infinity)
     }
@@ -128,9 +131,11 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
       case TransformSystem.name:
       case PhysicsSystem.name:
       case CameraSystem.name:
-        throw new Error()
+        throw new Error(`${constructor.name} will be created automatically if needed`)
     }
-    return this._createSystem(constructor, EMath.clamp(priority, 1, 1000))
+    const s = this._createSystem(constructor, EMath.clamp(priority, 1, 1000))
+    s.init()
+    return s
   }
 
   removeSystem<T extends System<S>>(typeValue: System.Constructor<S, T>): boolean {
@@ -144,21 +149,22 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
   private createSystemIfNeeded<T extends System<S>>(
     typeValue: System.Constructor<S, T>,
     priority: number,
-    preInit?: (system: T) => void,
+    init?: (system: T) => void,
   ) {
     if (this.hasSystem(typeValue)) {
       return
     }
     const s = this._createSystem(typeValue, priority)
-    preInit?.(s)
-    if (this.isInit) s.init()
+    init?.(s)
   }
 
   private _createSystem<T extends System<S>>(
     constructor: System.Constructor<S, T>,
     priority: number,
   ) {
-    this.removeSystem(constructor)
+    if (this.hasSystem(constructor)) {
+      this.removeSystem(constructor)
+    }
     const s = new constructor(this, this, this.signaler, priority)
     this.systems.push(s)
     this.systems.sort((a, b) => a.priority - b.priority)
@@ -173,8 +179,8 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     return this.systems.find((s) => s instanceof typeValue) as T
   }
 
-  private onResized() {
-    this.inputPad.setSize(Screen.width, Screen.height)
+  private resizeInputPad() {
+    this.inputPad.setSize(this.bounds)
   }
 }
 

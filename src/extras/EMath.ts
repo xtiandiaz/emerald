@@ -1,8 +1,8 @@
-import { PointData } from 'pixi.js'
+import { Vector, VectorData } from '../types'
 
 export namespace EMath {
-  export function isNearlyEqual(a: number, b: number, minDifference: number = 0.001): boolean {
-    return Math.abs(b - a) <= minDifference
+  export function isNearlyEqual(a: number, b: number, pettyDiff: number): boolean {
+    return Math.abs(b - a) <= pettyDiff
   }
 
   export function sign(value: number): number {
@@ -25,11 +25,19 @@ export namespace EMath {
     return from + (to - from) * at
   }
 
-  export function dot(a: PointData, b: PointData): number {
+  export function dot(a: VectorData, b: VectorData): number {
     return a.x * b.x + a.y * b.y
   }
 
-  export function cross(a: PointData, b: PointData): number {
+  export function cross(a: VectorData, b: VectorData): number {
     return a.x * b.y - a.y * b.x
+  }
+
+  export function scalarCross(scalar: number, v: VectorData, out_vector?: Vector) {
+    out_vector ??= new Vector()
+    const x = v.x
+    out_vector.x = -scalar * v.y
+    out_vector.y = scalar * x
+    return out_vector
   }
 }

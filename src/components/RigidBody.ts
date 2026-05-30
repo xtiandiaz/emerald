@@ -10,12 +10,11 @@ export class RigidBody extends Transform {
   readonly _drag = new Vector()
 
   angularVelocity = 0
-  _angularDrag = 0
 
   readonly _force = new Vector()
   torque = 0
 
-  _restitution = 0.1
+  _restitution = 0.2
   readonly _friction: Physics.Friction = {
     static: 0.5,
     dynamic: 0.3,
@@ -38,9 +37,6 @@ export class RigidBody extends Transform {
 
     if (options?.restitution != undefined) this.restitution = options?.restitution
     if (options?.friction) this.friction = options.friction
-
-    // if (options?.drag) this.setDrag(options.drag)
-    // if (options?.angularDrag != undefined) this.setAngularDrag(options.angularDrag)
   }
 
   get direction(): Vector {
@@ -69,21 +65,10 @@ export class RigidBody extends Transform {
     }
     const properties = calculateShapeProperties(collider._shape, 1, pixelsPerMeter)
     this._mass = EMath.clamp(properties.mass, 0, Infinity)
-    this._invMass = this._mass > 0 ? 1 / this._mass : 0
     this._moi = EMath.clamp(properties.momentOfInertia, 0, Infinity)
+    this._invMass = this._mass > 0 ? 1 / this._mass : 0
     this._invMoi = this._moi > 0 ? 1 / this._moi : 0
-    // console.log(this._mass, this._moi)
   }
-
-  // setDrag(value: Partial<VectorData>) {
-  //   const adjustValue = (val: number) => Math.pow(EMath.clamp01(val), 4)
-  //   if (value.x != undefined) this._drag.x = adjustValue(value.x)
-  //   if (value.y != undefined) this._drag.y = adjustValue(value.y)
-  // }
-
-  // setAngularDrag(value: number) {
-  //   this._angularDrag = Math.pow(EMath.clamp01(value), 4)
-  // }
 
   applyForce(force: PointData, position?: PointData) {
     // https://research.ncl.ac.uk/game/mastersdegree/gametechnologies/physicstutorials/3angularmotion/Physics%20-%20Angular%20Motion.pdf
@@ -107,8 +92,5 @@ export namespace RigidBody {
 
     restitution: number
     friction: Partial<Physics.Friction>
-
-    drag: VectorData
-    angularDrag: number
   }
 }

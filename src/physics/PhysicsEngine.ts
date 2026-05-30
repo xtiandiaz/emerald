@@ -1,51 +1,45 @@
 import type { Point } from 'pixi.js'
-import { Vector, type VectorData } from '..'
+import { Vector, VectorData } from '..'
 import { Gravity, Physics } from '.'
 import { RigidBody } from '../components'
 import { Collision } from '../collision'
 import { EMath } from '../extras'
 
 export class PhysicsEngine {
-  // Relative velocities per contact-point
-  private vrs = [new Vector(), new Vector()]
-  // Rotation radii and their orthogonals per contact-point
-  private rras = [new Vector(), new Vector()]
-  private rra_orths = [new Vector(), new Vector()]
-  private rrbs = [new Vector(), new Vector()]
-  private rrb_orths = [new Vector(), new Vector()]
-  // Reaction impulses and magnitudes per contact-point
-  private Jrs = [new Vector(), new Vector()]
-  // Frictional impulses and magnitudes per contact-point
-  private Jfs = [new Vector(), new Vector()]
-  // Tangent
-  private tan = new Vector()
   private zeroVector = new Vector()
+  // Rotation radii and their orthogonals per contact-point
+  private ras = [new Vector(), new Vector()]
+  private ras_orth = [new Vector(), new Vector()]
+  private rbs = [new Vector(), new Vector()]
+  private rbs_orth = [new Vector(), new Vector()]
+  private tan = new Vector() // Tangent
+  private fs = new Vector()
+  private vs = [new Vector(), new Vector()]
+  private vrs = [new Vector(), new Vector()] // Relative velocities per contact-point
 
   stepBody(body: RigidBody, gravity: Gravity, ppm: number, dt: number) {
     switch (body.type) {
       case 'static':
         return
       case 'dynamic':
-        const forces = gravity.clone()
-        forces.addScalars(body._force.x / dt, body._force.y / dt, forces)
-        body._force.set(0, 0)
+        this.fs.copyFrom(gravity)
+        // forces.addScalars(body._force.x / dt, body._force.y / dt, forces)
+        // body._force.set(0, 0)
 
-        body.velocity.addScalars(forces.x * dt, forces.y * dt, body.velocity)
-        // body.velocity.x *= 1 - body._drag.x
-        // body.velocity.y *= 1 - body._drag.y
+        body.velocity.x += this.fs.x * dt
+        body.velocity.y += this.fs.y * dt
 
-        body.angularVelocity += body.torque * dt
-        // body.angularVelocity *= 1 - body._angularDrag
-        body.torque = 0
+        // body.angularVelocity += body.torque * dt
+        // body.torque = 0
         break
     }
 
-    body.position.x += body.velocity.x * dt * ppm
-    body.position.y += body.velocity.y * dt * ppm
-    body.rotation += body.angularVelocity * dt * ppm
+    body.position.x += body.velocity.x * ppm * dt
+    body.position.y += body.velocity.y * ppm * dt
+    body.rotation += body.angularVelocity * ppm * dt
   }
 
-  separateBodies(a: RigidBody, b: RigidBody, depth: VectorData) {
+  separateBodies(a: RigidBody, b: RigidBody, depth: Vector) {
     if (a.type === 'static' && b.type === 'static') {
       return
     }
@@ -54,8 +48,7 @@ export class PhysicsEngine {
     } else if (b.type === 'static') {
       a.position.subtract(depth, a.position)
     } else {
-      depth.x /= 2
-      depth.y /= 2
+      depth.divideByScalar(2, depth)
       a.position.subtract(depth, a.position)
       b.position.add(depth, b.position)
     }
@@ -69,106 +62,88 @@ export class PhysicsEngine {
     const coeffs = PhysicsEngine.getResolutionCoefficients(a, b)
     const sumInvMasses = a.invMass + b.invMass
     const normal = c._normal
+    const cpCount = c._contactCount
 
     this.separateBodies(a, b, normal.multiplyByScalar(c._depth))
 
-    if (c._contactCount <= 0) {
+    if (cpCount <= 0) {
       return
     }
-    const totalDepth = c.totalContactsDepth
-    const jrs = [0, 0] // Impulse magnitudes (per point)
-    let i: number, denom: number
+    const impulse = new Vector()
+    let i: number, cp: Collision.Contact
 
-    this.clearImpulses()
-    for (i = 0; i < c._contactCount; i++) {
-      const cp = c._contacts[i]!
+    for (i = 0; i < cpCount; i++) {
+      cp = c._contacts[i]!
       this.resetRotationRadii(a, b, cp.point, i)
       this.resetRelativeVelocity(a, b, i)
-      const n_dot_vr = normal.dot(this.vrs[i]!)
-      if (n_dot_vr > 0) {
-        return
+
+      const vr = this.vrs[i]!
+      const vr_dot_n = vr.dot(normal)
+      if (vr_dot_n > 0) {
+        continue
       }
       // Reaction impulse magnitude (jr)
-      jrs[i] = -(1 + coeffs.restitution) * n_dot_vr
-      denom =
-        (sumInvMasses +
-          Math.pow(this.rras[i]!.cross(normal), 2) * a.invMoi +
-          Math.pow(this.rrbs[i]!.cross(normal), 2) * b.invMoi) /
-        c._contactCount
+      let jr = -(1 + coeffs.restitution) * vr_dot_n
+      const ra = this.ras[i]!
+      const rb = this.rbs[i]!
+      const irxn_ra = EMath.scalarCross(a.invMoi * ra.cross(normal), ra)
+      const irxn_rb = EMath.scalarCross(b.invMoi * rb.cross(normal), rb)
+      jr /= sumInvMasses + irxn_ra.add(irxn_rb).dot(normal)
+      jr /= cpCount
+      if (EMath.isNearlyEqual(jr, 0, Physics.NEARLY_ZERO_MAGNITUDE)) {
+        continue
+      }
+      // Reaction impulse (Jr)
+      impulse.set(normal.x * jr, normal.y * jr)
+      this.applyImpulse(impulse, a, ra, -1)
+      this.applyImpulse(impulse, b, rb, 1)
 
-      // Reaction impulse
-      const Jr = this.Jrs[i]!
-      const weight = cp.depth / totalDepth
-      Jr.add(normal.multiplyByScalar((weight * jrs[i]!) / denom), Jr)
-    }
-    for (i = 0; i < c._contactCount; i++) {
-      const cp = c._contacts[i]
-      this.resetRotationRadii(a, b, cp.point, i)
       this.resetRelativeVelocity(a, b, i)
-      const vr = this.vrs[i]!
+
       // Tangent
-      vr.subtract(normal.multiplyByScalar(vr.dot(normal)), this.tan)
-      if (this.tan.isNearlyEqualTo(this.zeroVector, Physics.NEARLY_ZERO_MAGNITUDE)) {
+      vr.subtract(normal.multiplyByScalar(normal.dot(vr)), this.tan)
+      if (this.tan.magnitudeIsNearlyEqualTo(this.zeroVector, Physics.NEARLY_ZERO_MAGNITUDE)) {
         continue
       } else {
         this.tan.normalize(this.tan)
       }
-
-      const jr = jrs[i]!
       const js = jr * coeffs.friction.static
       const jd = jr * coeffs.friction.dynamic
       const vr_dot_tan = vr.dot(this.tan)
       // Frictional impulse magnitude (jf)
-      const jf = vr_dot_tan == 0 || vr_dot_tan <= js ? -vr_dot_tan : -jd
-      denom =
-        (sumInvMasses +
-          Math.pow(this.rra_orths[i]!.dot(this.tan), 2) * a.invMoi +
-          Math.pow(this.rrb_orths[i]!.dot(this.tan), 2) * b.invMoi) /
-        c._contactCount
-
-      // Frictional impulse
-      const Jf = this.Jfs[i]!
-      const weight = cp.depth / totalDepth
-      Jf.add(this.tan.multiplyByScalar((weight * jf) / denom), Jf)
+      let jf = vr_dot_tan === 0 || vr_dot_tan <= js ? -vr_dot_tan : -jd
+      jf /= cpCount
+      // Frictional impulse (Jf)
+      impulse.set(this.tan.x * jf, this.tan.y * jf)
+      this.applyImpulse(impulse, a, ra, -1)
+      this.applyImpulse(impulse, b, rb, 1)
     }
-    this.applyImpulses(a, this.rras, c._contactCount, -1)
-    this.applyImpulses(b, this.rrbs, c._contactCount, 1)
   }
 
-  private resetRotationRadii(a: RigidBody, b: RigidBody, point: Point, index: number) {
-    const ra = this.rras[index]!
-    const rb = this.rrbs[index]!
+  private resetRotationRadii(a: RigidBody, b: RigidBody, point: Point, i: number) {
+    const ra = this.ras[i]!
+    const rb = this.rbs[i]!
     point.subtract(a.position, ra)
     point.subtract(b.position, rb)
-    ra.orthogonalize(this.rra_orths[index]!)
-    rb.orthogonalize(this.rrb_orths[index]!)
+    ra.orthogonalize(this.ras_orth[i]!)
+    rb.orthogonalize(this.rbs_orth[i]!)
   }
 
-  private resetRelativeVelocity(a: RigidBody, b: RigidBody, index: number) {
-    const vr = this.vrs[index]
-    b.velocity
-      .add(this.rrb_orths[index]!.multiplyByScalar(b.angularVelocity), vr)
-      .subtract(a.velocity, vr)
-      .subtract(this.rra_orths[index]!.multiplyByScalar(a.angularVelocity), vr)
+  private resetRelativeVelocity(a: RigidBody, b: RigidBody, i: number) {
+    const angvel_a = this.ras_orth[i]!.multiplyByScalar(a.angularVelocity, this.vs[0])
+    const angvel_b = this.rbs_orth[i]!.multiplyByScalar(b.angularVelocity, this.vs[1])
+    const vel_a = a.velocity.add(angvel_a, this.vs[0])
+    const vel_b = b.velocity.add(angvel_b, this.vs[1])
+    vel_b.subtract(vel_a, this.vrs[i])
   }
 
-  private clearImpulses() {
-    this.Jrs.forEach((Jr) => Jr.set(0, 0))
-    this.Jfs.forEach((Jf) => Jf.set(0, 0))
-  }
-
-  private applyImpulses(body: RigidBody, rs: Vector[], pointCount: number, sign: 1 | -1) {
+  private applyImpulse(impulse: VectorData, body: RigidBody, r: Vector, sign: -1 | 1) {
     if (body.type === 'static') {
       return
     }
-    for (let i = 0; i < pointCount; i++) {
-      const Jr = this.Jrs[i]!
-      const Jf = this.Jfs[i]!
-      const r = rs[i]!
-      body.velocity.x += sign * (Jr.x + Jf.x) * body.invMass
-      body.velocity.y += sign * (Jr.y + Jf.y) * body.invMass
-      body.angularVelocity += sign * (r.cross(Jr) + r.cross(Jf)) * body.invMoi
-    }
+    body.velocity.x += sign * impulse.x * body.invMass
+    body.velocity.y += sign * impulse.y * body.invMass
+    body.angularVelocity += sign * r.cross(impulse) * body.invMoi
   }
 }
 
@@ -180,7 +155,7 @@ export namespace PhysicsEngine {
 
   export function getResolutionCoefficients(a: RigidBody, b: RigidBody): ResolutionCoefficients {
     return {
-      restitution: Math.max(a._restitution, b._restitution),
+      restitution: Math.min(a._restitution, b._restitution),
       friction: {
         static: EMath.average(a._friction.static, b._friction.static),
         dynamic: EMath.average(a._friction.dynamic, b._friction.dynamic),

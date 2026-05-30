@@ -8,7 +8,7 @@ export namespace EColor {
     return `${componenHexString(r)}${componenHexString(g)}${componenHexString(b)}`
   }
 
-  export function getRandomColor(): string {
+  export const random = (): string => {
     return hexColorCode(Math.random(), Math.random(), Math.random())
   }
 }
