@@ -58,11 +58,15 @@ export class Segment {
   clipByMarginAlongRef(margin: number, ref: Vector) {
     const d0 = ref.dot(this.p0) - margin
     const d1 = ref.dot(this.p1) - margin
-    if (d0 * d1 < 0) {
-      const p = this.getPointAlongAtNormalizedDistance(d0 / (d0 - d1))
-      if (d0 < 0) this.p0.copyFrom(p)
-      else this.p1.copyFrom(p)
-      this.p1.subtract(this.p0, this._vector)
+    if (d0 * d1 >= 0) {
+      return
     }
+    const p = this.getPointAlongAtNormalizedDistance(d0 / (d0 - d1))
+    if (d0 < 0) {
+      this.p0.copyFrom(p)
+    } else {
+      this.p1.copyFrom(p)
+    }
+    this.p1.subtract(this.p0, this._vector)
   }
 }

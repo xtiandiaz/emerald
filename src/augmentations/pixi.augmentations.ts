@@ -5,7 +5,6 @@ declare global {
   interface Vector2Math {
     magnitudeSquared(): number
     magnitude(): number
-    magnitudeIsNearlyEqualTo(other: PointData, length: number): boolean
 
     add<T extends PointData = Point>(other: PointData, out_point?: T): T
     addScalar<T extends PointData = Point>(scalar: number, out_point?: T): T
@@ -39,11 +38,6 @@ Point.prototype.magnitudeSquared = ObservablePoint.prototype.magnitudeSquared = 
 Point.prototype.magnitude = ObservablePoint.prototype.magnitude = function (this): number {
   return Math.sqrt(this.magnitudeSquared())
 }
-
-Point.prototype.magnitudeIsNearlyEqualTo = ObservablePoint.prototype.magnitudeIsNearlyEqualTo =
-  function (other: PointData, length: number): boolean {
-    return this.subtract(other).magnitudeSquared() <= length * length
-  }
 
 Point.prototype.add = ObservablePoint.prototype.add = function <T extends PointData>(
   this,
@@ -191,8 +185,13 @@ Point.prototype.normalize = ObservablePoint.prototype.normalize = function <T ex
 ): T {
   out_vector ??= new Point() as PointData as T
   const mag = this.magnitude()
-  out_vector.x = this.x / mag
-  out_vector.y = this.y / mag
+  if (mag === 0) {
+    out_vector.x = 0
+    out_vector.y = 0
+  } else {
+    out_vector.x = this.x / mag
+    out_vector.y = this.y / mag
+  }
   return out_vector
 }
 

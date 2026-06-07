@@ -10,8 +10,9 @@ export class Collision extends ShapeOverlap {
   ]
   _contactCount = 0
 
-  // Props:
-  private readonly __segs: [Segment, Segment] = [new Segment(), new Segment()]
+  private cProps = {
+    segs: [new Segment(), new Segment()] as [Segment, Segment],
+  }
 
   get hasContact(): boolean {
     return this._contactCount > 0
@@ -69,8 +70,8 @@ export class Collision extends ShapeOverlap {
 
   private static setContactsFromPolygonToPolygon(a: ConvexPolygon, b: ConvexPolygon, c: Collision) {
     const normal = c._normal
-    const sa = a.getSideAcross(normal, c.__segs[0])
-    const sb = b.getSideAcross(normal.multiplyByScalar(-1), c.__segs[1])
+    const sa = a.getSideAcross(normal, c.cProps.segs[0])
+    const sb = b.getSideAcross(c._negNormal, c.cProps.segs[1])
     // 'Reference' and 'Incident' sides; Ref. is the most perpendicular to the collision's Normal,
     // and thus used to clip the Incident side's vertices to get the collision contact points
     // Source: https://dyn4j.org/2011/11/contact-points-using-clipping/
@@ -82,19 +83,23 @@ export class Collision extends ShapeOverlap {
       ref = sb
       inc = sa
     }
-    const clip_normal = ref._vector.normalize(c.__v)
-    let clip_margin = -1 * clip_normal.dot(ref.p0) // margin opposite to normal
+    const clip_normal = ref._vector.normalize(c.props.v)
+    let clip_margin = clip_normal.dot(ref.p0) // margin opposite to normal
     inc.clipByMarginAlongRef(clip_margin, clip_normal)
 
     clip_normal.multiplyByScalar(-1, clip_normal)
     clip_margin = clip_normal.dot(ref.p1) // margin opposite to normal
     inc.clipByMarginAlongRef(clip_margin, clip_normal)
 
-    const ref_normal = ref._vector.normalize(c.__v).orthogonalize(c.__v)
+    const ref_normal = ref._vector.normalize(c.props.v).orthogonalize(c.props.v)
     const ref_p0_proj = ref_normal.dot(ref.p0)
-    const setContactPoint = (inc_point: PointData) => {
+
+    c._contactCount = 0
+    function setContactPoint(inc_point: PointData) {
       let depth = ref_normal.dot(inc_point) - ref_p0_proj
-      if (depth < 0) return
+      if (depth < 0) {
+        return
+      }
       const i = c._contactCount
       c._contacts[i].depth = depth
       c._contacts[i].point.copyFrom(inc_point)

@@ -15,13 +15,14 @@ export class ShapeOverlap {
 
   protected readonly _negNormal = new Vector()
 
-  // Props:
-  protected __v = new Vector()
-  private readonly __prs: [ProjectionRange, ProjectionRange] = [
-    { min: 0, max: 0 },
-    { min: 0, max: 0 },
-  ]
-  private readonly __po: ProjectionOverlap = { depth: 0, axis: new Vector() }
+  protected props = {
+    v: new Vector(),
+    prs: [
+      { min: 0, max: 0 },
+      { min: 0, max: 0 },
+    ] as [ProjectionRange, ProjectionRange],
+    po: { depth: 0, axis: new Vector() } as ProjectionOverlap,
+  }
 
   get hasOverlap(): boolean {
     return this._depth >= 0
@@ -55,7 +56,7 @@ export class ShapeOverlap {
 
   private static fromCircleToCircle(a: Circle, b: Circle, so: ShapeOverlap) {
     const radii = a.radius + b.radius
-    const abvec = b._center.subtract(a._center, so.__v)
+    const abvec = b._center.subtract(a._center, so.props.v)
     const distSqrd = abvec.magnitudeSquared()
     if (distSqrd >= radii * radii) {
       return
@@ -67,15 +68,15 @@ export class ShapeOverlap {
 
   private static fromCircleToPolygon(a: Circle, b: ConvexPolygon, so: ShapeOverlap) {
     const v = b._vertices[b.getClosestVertexIndex(a._center)]
-    let axis = v.subtract(a._center, so.__v)
+    let axis = v.subtract(a._center, so.props.v)
     axis.normalize(axis)
 
-    let proj_a = a.getProjectionRange(axis, so.__prs[0])
-    let proj_b = b.getProjectionRange(axis, so.__prs[1])
+    let proj_a = a.getProjectionRange(axis, so.props.prs[0])
+    let proj_b = b.getProjectionRange(axis, so.props.prs[1])
     if (!hasProjectionOverlap(proj_a, proj_b)) {
       return
     }
-    const po = so.__po
+    const po = so.props.po
     po.depth = overlapDepth(proj_a, proj_b)
     axis = po.axis.copyFrom(axis)
     if (!b.hasProjectionOverlap(a, po)) {
@@ -90,13 +91,12 @@ export class ShapeOverlap {
   private static fromPolygonToCircle(a: ConvexPolygon, b: Circle, so: ShapeOverlap) {
     this.fromCircleToPolygon(b, a, so)
     if (so.hasOverlap) {
-      // overlap.normal.multiplyByScalar(-1, overlap.normal)
       this.correctDirectionIfNeeded(a, b, so._normal)
     }
   }
 
   private static fromPolygonToPolygon(a: ConvexPolygon, b: ConvexPolygon, so: ShapeOverlap) {
-    const po = so.__po
+    const po = so.props.po
     po.depth = Infinity
 
     if (!a.hasProjectionOverlap(b, po) || !b.hasProjectionOverlap(a, po)) {

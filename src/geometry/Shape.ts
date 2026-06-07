@@ -12,7 +12,7 @@ export abstract class Shape {
 
   private shouldUpdateVertices = true
 
-  constructor(readonly _localCenter: Point) {}
+  constructor(private readonly _localCenter: Point) {}
 
   hasAABB(other: Shape): boolean {
     this.updateVerticesIfNeeded()
@@ -24,7 +24,7 @@ export abstract class Shape {
   abstract getProjectionRange(axis: VectorData, out_projRange?: ProjectionRange): ProjectionRange
 
   protected updateVertices(): void {
-    this._transform.position.add(this._localCenter, this._center)
+    this._localCenter.add(this._transform.position, this._center)
   }
 
   protected updateVerticesIfNeeded() {
