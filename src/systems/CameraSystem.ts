@@ -33,7 +33,15 @@ export class CameraSystem<S extends SignalMap> extends System<S> {
   }
 
   private focus(camera: Camera, entityId: number) {
-    this.zoom.next = camera.zoom
+    this.zoom.next = camera.framedToBounds
+      ? Math.max(
+          camera.zoom,
+          Math.min(
+            this.viewport.width / this.bounds.width,
+            this.viewport.height / this.bounds.height,
+          ),
+        )
+      : camera.zoom
 
     const target = this.world.getTransform(entityId)
     if (!target) {

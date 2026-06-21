@@ -6,7 +6,7 @@ export interface View {
   viewport: Rectangle
   position: Point
   scale: Point
-  camera?: View.CameraEntity
+  readonly camera?: View.CameraEntity
 
   setCamera(entityId: number): Camera | undefined
 }

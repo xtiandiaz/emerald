@@ -50,8 +50,7 @@ export abstract class System<S extends SignalMap> {
     return this.world.createEntity(options)
   }
 
-  addComponent<T extends Component>(component: T, entityId?: number, options?: Entity.Options) {
-    entityId ??= this.world.createEntity(options)
+  addComponent<T extends Component>(component: T, entityId: number) {
     return this.world.addComponent(component, entityId)!
   }
 
