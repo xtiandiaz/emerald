@@ -2,7 +2,7 @@ import { Point, type PointData } from 'pixi.js'
 import { EMath } from '../extras'
 
 export class Camera {
-  framedToBounds = true
+  framedToBounds = false
   readonly offset = new Point()
   private _speed?: number
   private _zoom = 1
@@ -18,7 +18,7 @@ export class Camera {
     return this._speed
   }
   set speed(value: number) {
-    this._speed = EMath.clamp(value / 10, 0, 1)
+    this._speed = 11 - EMath.clamp(value, 1, 10)
   }
 
   get zoom(): number {

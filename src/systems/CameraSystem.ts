@@ -11,7 +11,7 @@ export class CameraSystem<S extends SignalMap> extends System<S> {
 
   init() {}
 
-  update(dt: number): void {
+  update(_: number): void {
     const c = this.view.camera
     if (!c) {
       return
@@ -24,10 +24,9 @@ export class CameraSystem<S extends SignalMap> extends System<S> {
       this.view.position.copyFrom(this.pos.focus)
       this.isFirstFocus = false
     } else {
-      const dd = dt * this.speed
-      this.zoom.cur += (this.zoom.next - this.zoom.cur) * dd
-      this.view.position.x += (this.pos.focus.x - this.view.position.x) * dd
-      this.view.position.y += (this.pos.focus.y - this.view.position.y) * dd
+      this.zoom.cur += (this.zoom.next - this.zoom.cur) / this.speed
+      this.view.position.x += (this.pos.focus.x - this.view.position.x) / this.speed
+      this.view.position.y += (this.pos.focus.y - this.view.position.y) / this.speed
     }
     this.view.scale.set(this.zoom.cur)
   }
