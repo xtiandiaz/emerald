@@ -3,7 +3,6 @@ export * from './augmentations'
 export * from './geometry'
 export * from './utils'
 
-export * from './Component'
 export * from './components'
 
 export * from './Entity'

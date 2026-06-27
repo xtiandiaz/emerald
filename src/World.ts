@@ -1,5 +1,5 @@
 import { Container } from 'pixi.js'
-import { Component, Entity, Transform } from '.'
+import { ComponentConstructor, Entity, Transform } from '.'
 import { RigidBody } from './components'
 
 export class World extends Container {
@@ -68,7 +68,7 @@ export class World extends Container {
     return [...(this.tags.get(tag) ?? [])]
   }
 
-  addComponent<T extends Component>(component: T, entityId: number) {
+  addComponent<T extends Object>(component: T, entityId: number) {
     const e = this._entities.get(entityId)
     if (!e) {
       console.error('Undefined entity', entityId)
@@ -92,21 +92,18 @@ export class World extends Container {
     return component
   }
 
-  hasComponent<T extends Component>(
-    typeValue: Component.Constructor<T>,
-    entityId: number,
-  ): boolean {
+  hasComponent<T extends Object>(typeValue: ComponentConstructor<T>, entityId: number): boolean {
     return this._entities.get(entityId)?.components.has(typeValue.name) ?? false
   }
 
-  getComponent<T extends Component>(
-    typeValue: Component.Constructor<T>,
+  getComponent<T extends Object>(
+    typeValue: ComponentConstructor<T>,
     entityId: number,
   ): T | undefined {
     return this._entities.get(entityId)?.components.get(typeValue.name) as T
   }
 
-  getComponents<T extends Component>(typeValue: Component.Constructor<T>): Map<number, T> {
+  getComponents<T extends Object>(typeValue: ComponentConstructor<T>): Map<number, T> {
     return new Map(
       this._entities
         .values()
@@ -115,7 +112,7 @@ export class World extends Container {
     )
   }
 
-  getLikeComponents<T extends Component>(typeValue: Component.Constructor<T>, entityId: number) {
+  getLikeComponents<T extends Object>(typeValue: ComponentConstructor<T>, entityId: number) {
     return this._entities
       .get(entityId)
       ?.components.values()
@@ -123,10 +120,7 @@ export class World extends Container {
       .map((c) => c as T)
   }
 
-  removeComponent<T extends Component>(
-    typeValue: Component.Constructor<T>,
-    entityId: number,
-  ): boolean {
+  removeComponent<T extends Object>(typeValue: ComponentConstructor<T>, entityId: number): boolean {
     return this._removeComponent(typeValue.name, entityId)
   }
 

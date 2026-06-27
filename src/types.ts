@@ -7,6 +7,8 @@ export interface Range {
   max: number
 }
 
+export type ComponentConstructor<T extends Object> = new (...params: any[]) => T
+
 export interface Transform {
   position: Point
   rotation: number

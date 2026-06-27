@@ -1,5 +1,5 @@
 import { Container, PointData } from 'pixi.js'
-import { Component, Transform } from '.'
+import { ComponentConstructor, Transform } from '.'
 
 export class Entity extends Container implements Transform {
   components = new Map<string, Object>()
@@ -15,7 +15,7 @@ export class Entity extends Container implements Transform {
     if (options?.initialPosition) this.position.copyFrom(options.initialPosition)
   }
 
-  getComponent<T extends Component>(typeValue: Component.Constructor<T>) {
+  getComponent<T extends Object>(typeValue: ComponentConstructor<T>) {
     return this.components.get(typeValue.name) as T
   }
 }

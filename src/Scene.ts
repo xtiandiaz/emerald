@@ -1,5 +1,5 @@
 import { Matrix, Rectangle, Renderer, Sprite } from 'pixi.js'
-import { World, System, SignalMap, Signaler, Disconnectable, Component, View, Entity } from '.'
+import { World, System, SignalMap, Signaler, Disconnectable, View, Entity } from '.'
 import { Camera, Collider, RigidBody } from './components'
 import { CameraSystem, PhysicsSystem } from './systems'
 import { EMath } from './extras'
@@ -123,7 +123,7 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     return didRemove
   }
 
-  addComponent<T extends Component>(component: T, entityId: number): T | undefined {
+  addComponent<T extends Object>(component: T, entityId: number): T | undefined {
     const c = super.addComponent(component, entityId)
     if (c instanceof RigidBody) {
       const col = this.getComponent(Collider, entityId)
