@@ -1,6 +1,6 @@
 # Emerald
 
-A simple **WebGL 2D Game Framework** built on top of [PixiJS](https://github.com/pixijs/pixijs/) for optimal rendering, and written completely in TypeScript.
+A simple **HTML 5 Game Framework** built on top of [PixiJS](https://github.com/pixijs/pixijs/) for optimal rendering, and written completely in TypeScript.
 
 ## Features
 

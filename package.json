@@ -1,14 +1,24 @@
 {
-  "name": "emerald",
-  "version": "0.5",
-  "scripts": {},
+  "name": "emerald-pixi",
+  "version": "1.0.0",
+  "author": "Cristian Díaz",
+  "description": "A HTML 5 Game Framework built on top of PixiJS for optimal rendering, and written completely in TypeScript.",
+  "repository": {
+    "url": "https://github.com/xtiandiaz/emerald"
+  },
+  "keywords": [
+    "game",
+    "pixi",
+    "typescript"
+  ],
+  "license": "BSD-3-Clause",
   "dependencies": {
     "gsap": "^3.15.0",
-    "pixi.js": "^8.18.1"
+    "pixi.js": "^8.19.0"
   },
   "devDependencies": {
     "@types/gsap": "^1.20.2",
     "typescript": "^6.0.3",
-    "vite": "^7.1.12"
+    "vite": "^7.3.6"
   }
 }
