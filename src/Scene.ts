@@ -66,7 +66,7 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
   async _deinit() {
     await this.deinit?.()
 
-    this.systems.forEach((s) => s.deinit?.())
+    this.systems.forEach((s) => s._deinit?.())
     this.connections.forEach((c) => c.disconnect())
 
     this.renderer.removeListener('resize')

@@ -94,6 +94,19 @@ export abstract class System<S extends SignalMap> {
   connect<K extends keyof S>(key: K, connector: Signal.Connector<S[K]>) {
     this.connections.push(this.signaler.connect(key, connector))
   }
+
+  addEventListener<K extends keyof WindowEventMap>(
+    type: K,
+    listener: (e: WindowEventMap[K]) => void,
+  ) {
+    const _listener = (e: WindowEventMap[K]) => listener(e)
+    const disconnectable: Disconnectable = {
+      disconnect: () => window.removeEventListener(type, _listener),
+    }
+    window.addEventListener(type, _listener)
+
+    return disconnectable
+  }
 }
 
 export namespace System {
