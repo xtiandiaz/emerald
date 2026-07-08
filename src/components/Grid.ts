@@ -1,13 +1,14 @@
 import { Container } from 'pixi.js'
+import { DirectionKey } from '../types'
 
-export class Grid<K, T extends Grid.Tile<K>> extends Container {
-  tiles: Map<Grid.Layer, Array<T | undefined>>
+export class Grid<Key, Layer, Tile extends Grid.Tile<Key>> extends Container {
+  tiles: Map<Layer, Array<Tile | undefined>>
 
   constructor(
     protected readonly cols: number,
     protected readonly rows: number,
-    protected tileFactory: Grid.TileFactory<K>,
-    protected tileMap: Grid.TileMap<K>,
+    protected tileFactory: Grid.TileFactory<Key>,
+    protected tileMap: Grid.TileMap<Key, Layer>,
     protected readonly unitSize: number,
   ) {
     super()
@@ -21,7 +22,18 @@ export class Grid<K, T extends Grid.Tile<K>> extends Container {
     }
   }
 
-  setTile(key: K, col: number, row: number, layer: Grid.Layer) {
+  getTileKey(location: Grid.Location<Layer>): Key | undefined {
+    return this.tileMap.get(location.layer)?.[(location.row * this.cols) | location.col]
+  }
+
+  getNextLocation(
+    from: Grid.Location<Layer>,
+    toward: DirectionKey,
+  ): Grid.Location<Layer> | undefined {
+    throw new Error('Not implemented')
+  }
+
+  setTile(key: Key, col: number, row: number, layer: Layer) {
     if (!this.hasLocation(col, row, layer)) {
       console.error(`Undefined Grid location, col: ${col}, row: ${row}, layer: ${layer}`)
       return
@@ -35,7 +47,7 @@ export class Grid<K, T extends Grid.Tile<K>> extends Container {
     }
   }
 
-  removeTile(col: number, row: number, layer: Grid.Layer) {
+  removeTile(col: number, row: number, layer: Layer) {
     if (!this.hasLocation(col, row, layer)) {
       return
     }
@@ -46,13 +58,17 @@ export class Grid<K, T extends Grid.Tile<K>> extends Container {
     if (subMap) subMap[i] = undefined
   }
 
-  hasLocation(col: number, row: number, layer: Grid.Layer) {
+  hasLocation(col: number, row: number, layer: Layer) {
     return col < this.cols && row < this.rows && this.tileMap.has(layer)
   }
 }
 
 export namespace Grid {
-  export type Layer = string | number
+  export interface Location<Layer> {
+    col: number
+    row: number
+    layer: Layer
+  }
 
   export interface Tile<K> extends Container {
     readonly key: K
@@ -60,5 +76,5 @@ export namespace Grid {
 
   export type TileFactory<K> = (key: K) => Tile<K> | undefined
 
-  export type TileMap<Key> = Map<Layer, Array<Key>>
+  export type TileMap<Key, Layer> = Map<Layer, Array<Key>>
 }
