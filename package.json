@@ -1,5 +1,5 @@
 {
-  "name": "emerald-pixi",
+  "name": "emerald",
   "version": "1.0.0",
   "author": "Cristian Díaz",
   "description": "A HTML 5 Game Framework built on top of PixiJS for optimal rendering, and written completely in TypeScript.",
