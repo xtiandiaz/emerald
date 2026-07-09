@@ -1,8 +1,9 @@
 import { Container } from 'pixi.js'
 import { ComponentConstructor, Entity, Transform } from '.'
-import { RigidBody } from './components'
+import { Collider, RigidBody } from './components'
 
 export class World extends Container {
+  _crs = new Array<[Collider, entityId: number]>()
   _rbs = new Array<[RigidBody, entityId: number]>()
 
   protected _entities = new Map<number, Entity>()
@@ -68,7 +69,7 @@ export class World extends Container {
     return [...(this.tags.get(tag) ?? [])]
   }
 
-  addComponent<T extends Object>(component: T, entityId: number) {
+  addComponent<T extends Object>(entityId: number, component: T) {
     const e = this._entities.get(entityId)
     if (!e) {
       console.error('Undefined entity', entityId)
@@ -82,7 +83,9 @@ export class World extends Container {
       }
     }
     e.components.set(name, component)
-    if (component instanceof RigidBody) {
+    if (component instanceof Collider) {
+      this._crs.push([component, entityId])
+    } else if (component instanceof RigidBody) {
       this._rbs.push([component, entityId])
       // console.log(this._rbs.length)
     } else if (component instanceof Container) {
@@ -90,6 +93,23 @@ export class World extends Container {
     }
 
     return component
+  }
+
+  addComponents<
+    C1 extends Object,
+    C2 extends Object,
+    C3 extends Object,
+    C4 extends Object,
+    C5 extends Object,
+  >(entityId: number, c1: C1, c2?: C2, c3?: C3, c4?: C4, c5?: C5) {
+    if (!this.hasEntity(entityId)) {
+      return
+    }
+    this.addComponent(entityId, c1)
+    if (c2) this.addComponent(entityId, c2)
+    if (c3) this.addComponent(entityId, c3)
+    if (c4) this.addComponent(entityId, c4)
+    if (c5) this.addComponent(entityId, c5)
   }
 
   hasComponent<T extends Object>(typeValue: ComponentConstructor<T>, entityId: number): boolean {
@@ -142,7 +162,10 @@ export class World extends Container {
       return false
     }
     const c = e.components.get(name)
-    if (c instanceof RigidBody) {
+    if (c instanceof Collider) {
+      const i = this._crs.findIndex(([, id]) => id === entityId)
+      this._crs.splice(i, 1)
+    } else if (c instanceof RigidBody) {
       const i = this._rbs.findIndex(([, id]) => id === entityId)
       this._rbs.splice(i, 1)
     } else if (c instanceof Container) {
