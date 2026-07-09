@@ -45,48 +45,6 @@ export abstract class System<S extends SignalMap> {
 
   update?(dt: number): void
 
-  /* HELPER METHODS */
-
-  createEntity(options?: Partial<Entity.Options>) {
-    return this.world.createEntity(options)
-  }
-
-  getTransform(entityId: number): Transform | undefined {
-    return this.world.getTransform(entityId)
-  }
-
-  addComponent<T extends Object>(component: T, entityId: number) {
-    return this.world.addComponent(component, entityId)!
-  }
-
-  addComponents<
-    C1 extends Object,
-    C2 extends Object,
-    C3 extends Object,
-    C4 extends Object,
-    C5 extends Object,
-  >(entityId: number, c1: C1, c2?: C2, c3?: C3, c4?: C4, c5?: C5) {
-    if (!this.world.hasEntity(entityId)) {
-      return
-    }
-    this.world.addComponent(c1, entityId)
-    if (c2) this.world.addComponent(c2, entityId)
-    if (c3) this.world.addComponent(c3, entityId)
-    if (c4) this.world.addComponent(c4, entityId)
-    if (c5) this.world.addComponent(c5, entityId)
-  }
-
-  hasComponent<T extends Object>(typeValue: ComponentConstructor<T>, entityId: number): boolean {
-    return this.world.hasComponent(typeValue, entityId)
-  }
-
-  getComponent<T extends Object>(
-    typeValue: ComponentConstructor<T>,
-    entityId: number,
-  ): T | undefined {
-    return this.world.getComponent(typeValue, entityId)
-  }
-
   emit<K extends keyof S>(key: K, signal: S[K]): void {
     this.signaler.emit(key, signal)
   }

@@ -28,7 +28,7 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
 
       for (i = 0; i < rbs.length; i++) {
         const [rb, e] = rbs[i]
-        cr_a = this.getComponent(Collider, e)
+        cr_a = this.world.getComponent(Collider, e)
         if (!cr_a) {
           continue
         }
@@ -37,8 +37,8 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
       }
 
       for (i = 0; i < rbs.length; i++) {
-        const [rb_a, ea] = rbs[i]
-        cr_a = this.world.getComponent(Collider, ea)
+        const [rb_a, e_a] = rbs[i]
+        cr_a = this.world.getComponent(Collider, e_a)
         if (!cr_a) {
           continue
         }
@@ -51,7 +51,7 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
           c = Collision.from(
             cr_a,
             cr_b,
-            collisionCount < this.rcs.length ? this.rcs[collisionCount].c : undefined,
+            collisionCount < this.rcs.length ? this.rcs[collisionCount].col : undefined,
           )
           if (!c.hasContact) {
             continue
@@ -60,9 +60,9 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
             const rc = this.rcs[collisionCount]
             rc.a = rb_a
             rc.b = rb_b
-            rc.c = c
+            rc.col = c
           } else {
-            this.rcs.push({ a: rb_a, b: rb_b, c })
+            this.rcs.push({ a: rb_a, b: rb_b, col: c })
           }
           collisionCount++
         }
@@ -70,7 +70,7 @@ export class PhysicsSystem<S extends SignalMap> extends System<S> {
 
       for (i = 0; i < collisionCount; i++) {
         const rc = this.rcs[i]
-        this.engine.resolveCollision(rc.a, rc.b, rc.c)
+        this.engine.resolveCollision(rc.a, rc.b, rc.col)
       }
       this.rcs.length = collisionCount // Free unused ones for GC
     }
@@ -98,6 +98,6 @@ export namespace PhysicsSystem {
   export interface ResolvableCollision {
     a: RigidBody
     b: RigidBody
-    c: Collision
+    col: Collision
   }
 }
