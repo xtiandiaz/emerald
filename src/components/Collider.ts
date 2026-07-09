@@ -1,8 +1,11 @@
 import { Point, Transform } from 'pixi.js'
 import { Shape, Circle, Rectangle, ConvexPolygon } from '../geometry'
 import { ShapeOverlap, CollisionMap } from '../collision'
+import { Vector } from '../types'
 
 export class Collider {
+  readonly overlaps = new Map<number, Collider.Overlap>()
+
   constructor(
     public _shape: Shape,
     public layer = 1,
@@ -23,7 +26,7 @@ export class Collider {
     return this.canCollide(other) && this._shape.hasAABB(other._shape)
   }
 
-  collides(other: Collider, out_sp?: ShapeOverlap): boolean {
+  hasOverlap(other: Collider, out_sp?: ShapeOverlap): boolean {
     return ShapeOverlap._from(this._shape, other._shape, out_sp).hasOverlap
   }
 }
@@ -40,5 +43,12 @@ export namespace Collider {
   }
   export const convexPolygon = (vertices: Point[], layer?: number) => {
     return new Collider(new ConvexPolygon(vertices), layer)
+  }
+
+  export interface Overlap {
+    otherId: number
+    otherTag?: string
+    depth: number
+    normal: Vector
   }
 }
