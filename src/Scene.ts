@@ -33,9 +33,9 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
   }
 
   get bounds(): Rectangle {
-    return this.options?.bounds ?? this.viewport
+    return this.options?.bounds ?? this.frame
   }
-  get viewport(): Rectangle {
+  get frame(): Rectangle {
     return this.renderer.screen
   }
   get camera(): View.CameraEntity | undefined {

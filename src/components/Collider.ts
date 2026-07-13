@@ -5,11 +5,14 @@ import { Vector } from '../types'
 
 export class Collider {
   readonly overlaps = new Map<number, Collider.Overlap>()
+  layer: number
 
   constructor(
     public _shape: Shape,
-    public layer = 1,
-  ) {}
+    public options?: Collider.Options,
+  ) {
+    this.layer = options?.layer ?? 1
+  }
 
   get _transform(): Transform {
     return this._shape._transform
@@ -18,7 +21,9 @@ export class Collider {
   canCollide(other: Collider, map?: CollisionMap): boolean {
     return (
       !map ||
-      (((map.get(this.layer) ?? 0) & other.layer) | ((map.get(other.layer) ?? 0) & this.layer)) != 0
+      (((map.get(this.options) ?? 0) & other.options) |
+        ((map.get(other.options) ?? 0) & this.options)) !=
+        0
     )
   }
 
@@ -32,17 +37,21 @@ export class Collider {
 }
 
 export namespace Collider {
-  export const circle = (radius: number, layer?: number) => {
-    return new Collider(new Circle(radius), layer)
+  export interface Options {
+    layer: number
   }
-  export const rectangle = (width: number, height: number, layer?: number) => {
-    return new Collider(new Rectangle(width, height), layer)
+
+  export const circle = (radius: number, options?: Options) => {
+    return new Collider(new Circle(radius), options)
   }
-  export const regularPolygon = (radius: number, sides: number, layer?: number) => {
-    return new Collider(ConvexPolygon.from(radius, sides), layer)
+  export const rectangle = (width: number, height: number, options?: Options) => {
+    return new Collider(new Rectangle(width, height), options)
   }
-  export const convexPolygon = (vertices: Point[], layer?: number) => {
-    return new Collider(new ConvexPolygon(vertices), layer)
+  export const regularPolygon = (radius: number, sides: number, options?: Options) => {
+    return new Collider(ConvexPolygon.from(radius, sides), options)
+  }
+  export const convexPolygon = (vertices: Point[], options?: Options) => {
+    return new Collider(new ConvexPolygon(vertices), options)
   }
 
   export interface Overlap {

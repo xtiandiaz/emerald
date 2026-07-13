@@ -1,15 +1,5 @@
 import { Rectangle } from 'pixi.js'
-import {
-  type World,
-  type SignalMap,
-  type Signaler,
-  Disconnectable,
-  Signal,
-  View,
-  Entity,
-  ComponentConstructor,
-  Transform,
-} from './'
+import { type World, type SignalMap, type Signaler, Disconnectable, Signal, View } from './'
 
 export abstract class System<S extends SignalMap> {
   protected readonly connections = Array<Disconnectable>()
@@ -28,8 +18,8 @@ export abstract class System<S extends SignalMap> {
   get bounds(): Rectangle {
     return this.view.bounds
   }
-  get viewport(): Rectangle {
-    return this.view.viewport
+  get frame(): Rectangle {
+    return this.view.frame
   }
 
   abstract init(): void

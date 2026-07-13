@@ -3,7 +3,7 @@ import { Camera } from './components'
 
 export interface View {
   bounds: Rectangle
-  viewport: Rectangle
+  frame: Rectangle
   position: Point
   scale: Point
   readonly camera?: View.CameraEntity
