@@ -123,17 +123,17 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     return didRemove
   }
 
-  addComponent<T extends Object>(entityId: number, component: T): T | undefined {
-    const c = super.addComponent(entityId, component)
+  protected _addComponent<T extends Object>(component: T, e: Entity): T | undefined {
+    const c = super._addComponent(component, e)
     if (c instanceof RigidBody) {
-      const col = this.getComponent(Collider, entityId)
+      const col = this.getComponent(Collider, e.id)
       if (col) c.resetShapeProperties(col, this.physicsOptions.ppm)
 
       this.createSystemIfNeeded(PhysicsSystem, -Infinity, (ps) => {
         ps.options = this.physicsOptions
       })
     } else if (c instanceof Collider) {
-      this.getComponent(RigidBody, entityId)?.resetShapeProperties(c, this.physicsOptions.ppm)
+      this.getComponent(RigidBody, e.id)?.resetShapeProperties(c, this.physicsOptions.ppm)
     } else if (c instanceof Camera) {
       this.createSystemIfNeeded(CameraSystem, Infinity)
     }

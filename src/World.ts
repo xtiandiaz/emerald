@@ -69,47 +69,15 @@ export class World extends Container {
     return [...(this.tags.get(tag) ?? [])]
   }
 
-  addComponent<T extends Object>(entityId: number, component: T) {
+  addComponent(entityId: number, ...components: object[]): object | undefined {
     const e = this._entities.get(entityId)
     if (!e) {
-      console.error('Undefined entity', entityId)
+      console.error('Undefined Entity', entityId)
       return
     }
-    const name = component.constructor.name
-    if (e.components.has(name)) {
-      if (!this._removeComponent(name, entityId)) {
-        console.error(`Can't add duplicate ${name} component`)
-        return
-      }
-    }
-    e.components.set(name, component)
-    if (component instanceof Collider) {
-      this._crs.push([component, entityId])
-    } else if (component instanceof RigidBody) {
-      this._rbs.push([component, entityId])
-      // console.log(this._rbs.length)
-    } else if (component instanceof Container) {
-      e.addChild(component)
-    }
+    components.forEach((c) => this._addComponent(c, e))
 
-    return component
-  }
-
-  addComponents<
-    C1 extends Object,
-    C2 extends Object,
-    C3 extends Object,
-    C4 extends Object,
-    C5 extends Object,
-  >(entityId: number, c1: C1, c2?: C2, c3?: C3, c4?: C4, c5?: C5) {
-    if (!this.hasEntity(entityId)) {
-      return
-    }
-    this.addComponent(entityId, c1)
-    if (c2) this.addComponent(entityId, c2)
-    if (c3) this.addComponent(entityId, c3)
-    if (c4) this.addComponent(entityId, c4)
-    if (c5) this.addComponent(entityId, c5)
+    return components[0]
   }
 
   hasComponent<T extends Object>(typeValue: ComponentConstructor<T>, entityId: number): boolean {
@@ -153,6 +121,27 @@ export class World extends Container {
     this.tags.clear()
 
     super.destroy(true)
+  }
+
+  protected _addComponent<T extends Object>(component: T, e: Entity) {
+    const name = component.constructor.name
+    if (e.components.has(name)) {
+      if (!this._removeComponent(name, e.id)) {
+        console.error(`Can't add duplicate ${name} component`)
+        return
+      }
+    }
+    e.components.set(name, component)
+    if (component instanceof Collider) {
+      this._crs.push([component, e.id])
+    } else if (component instanceof RigidBody) {
+      this._rbs.push([component, e.id])
+      // console.log(this._rbs.length)
+    } else if (component instanceof Container) {
+      e.addChild(component)
+    }
+
+    return component
   }
 
   private _removeComponent(name: string, entityId: number): boolean {
