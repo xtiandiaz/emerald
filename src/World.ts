@@ -69,15 +69,25 @@ export class World extends Container {
     return [...(this.tags.get(tag) ?? [])]
   }
 
-  addComponent(entityId: number, ...components: object[]): object | undefined {
+  addComponent<
+    C1 extends Object,
+    C2 extends Object,
+    C3 extends Object,
+    C4 extends Object,
+    C5 extends Object,
+  >(entityId: number, c1: C1, c2?: C2, c3?: C3, c4?: C4, c5?: C5): C1 | undefined {
     const e = this._entities.get(entityId)
     if (!e) {
       console.error('Undefined Entity', entityId)
       return
     }
-    components.forEach((c) => this._addComponent(c, e))
+    this._addComponent(c1, e)
+    if (c2) this._addComponent(c2, e)
+    if (c3) this._addComponent(c3, e)
+    if (c4) this._addComponent(c4, e)
+    if (c5) this._addComponent(c5, e)
 
-    return components[0]
+    return c1
   }
 
   hasComponent<T extends Object>(typeValue: ComponentConstructor<T>, entityId: number): boolean {
