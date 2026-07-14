@@ -4,6 +4,8 @@ declare global {
       array: V[],
       selector: (value: V) => K,
     ): V[][]
+
+    range(start: number, end: number, step?: number): number[]
   }
 }
 
@@ -24,4 +26,11 @@ export function group<K extends string | number, V extends object>(
   }, new Array<V[]>())
 }
 
+export const range = (start: number, end: number, step?: number) => {
+  step = step ?? 1
+
+  return Array.from({ length: Math.floor((end - start) / step) }, (_, key) => key * step + start)
+}
+
 Array.groupedFrom = group
+Array.range = range
