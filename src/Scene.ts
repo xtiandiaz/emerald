@@ -62,9 +62,9 @@ export abstract class Scene<S extends SignalMap> extends World implements View {
     await this.init()
   }
 
-  async deinit?(): Promise<void>
-  async _deinit() {
-    await this.deinit?.()
+  deinit?(): void
+  _deinit() {
+    this.deinit?.()
 
     this.systems.forEach((s) => s._deinit?.())
     this.connections.forEach((c) => c.disconnect())

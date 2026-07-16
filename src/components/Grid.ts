@@ -26,13 +26,6 @@ export class Grid<Key, Layer, Tile extends Grid.Tile<Key>> extends Container {
     return this.tileMap.get(location.layer)?.[(location.row * this.cols) | location.col]
   }
 
-  getNextLocation(
-    from: Grid.Location<Layer>,
-    toward: DirectionKey,
-  ): Grid.Location<Layer> | undefined {
-    throw new Error('Not implemented')
-  }
-
   setTile(key: Key, col: number, row: number, layer: Layer) {
     if (!this.hasLocation(col, row, layer)) {
       console.error(`Undefined Grid location, col: ${col}, row: ${row}, layer: ${layer}`)
